@@ -1,7 +1,7 @@
 // Autosave engine. Framework-free so it can be unit tested with fake timers.
 // One queue per app; entries are keyed by note id so remounting the editor never creates a second writer.
-import type { DocJSON, NoteSummary } from '../../shared/types.ts'
-import { normalizeTags } from '../../shared/tags.ts'
+import type { DocJSON, NoteSummary } from '../../../shared/types.ts'
+import { normalizeTags } from '../../../shared/tags.ts'
 
 export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
 

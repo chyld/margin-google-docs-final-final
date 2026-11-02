@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { X } from 'lucide-react'
-import { dismissNotice, getNotices, subscribeNotices } from '../notices.ts'
+import { dismissNotice, getNotices, subscribeNotices } from '../state/notices.ts'
 
 export function Notices() {
   const notices = useSyncExternalStore(subscribeNotices, getNotices)

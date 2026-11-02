@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { closeHistory } from '@tiptap/pm/history'
-import { extensions } from '../../shared/extensions.ts'
-import type { NamedStyle, StyleProps } from '../../shared/styleProps.ts'
+import { extensions } from '../../../shared/extensions.ts'
+import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
 import { applyStyle, effectiveTextProps } from './styleCommands.ts'
 import { EndStyleShortcuts } from './endStyle.ts'
 
@@ -351,7 +351,7 @@ describe('any formatting-bar change ends the style (the text keeps its look)', (
   })
 
   it('clear formatting at the cursor types plain even with no style (direct bold only)', async () => {
-    const { clearFormatting } = await import('./components/Toolbar.tsx').catch(() => ({ clearFormatting: null }))
+    const { clearFormatting } = await import('../components/Toolbar.tsx').catch(() => ({ clearFormatting: null }))
     const { runWithEndStyle } = await import('./endStyle.ts')
     const { clearInlineFormatting } = await import('./styleCommands.ts')
     mount([{ type: 'paragraph', content: [{ type: 'text', text: 'Bold', marks: [{ type: 'bold' }] }] }])
@@ -422,7 +422,7 @@ describe('the formatting shortcuts end the style (real key presses)', () => {
   const styleProps: StyleProps = { color: '#9334e6', bold: true, align: 'center' }
 
   async function prepared(text: string) {
-    const { setStylesForTesting } = await import('./namedStyles.ts')
+    const { setStylesForTesting } = await import('../state/namedStyles.ts')
     setStylesForTesting([style(styleProps)])
     mount([{ type: 'paragraph' }])
     select(1)
@@ -491,7 +491,7 @@ describe('code review fixes (grok)', () => {
   const emptyStyled = { type: 'paragraph', attrs: { styleId: ID } }
 
   async function withStyle() {
-    const { setStylesForTesting } = await import('./namedStyles.ts')
+    const { setStylesForTesting } = await import('../state/namedStyles.ts')
     setStylesForTesting([style(props)])
   }
 
@@ -554,7 +554,7 @@ describe('code review fixes (grok)', () => {
 
   it('Normal text on an already-paragraph styled line ends the style', async () => {
     const { runWithEndStyle, setParagraphType } = await import('./endStyle.ts')
-    const { setStylesForTesting } = await import('./namedStyles.ts')
+    const { setStylesForTesting } = await import('../state/namedStyles.ts')
     setStylesForTesting([style({ color: '#9334e6', align: 'center' })])
     mount([{ type: 'paragraph', attrs: { styleId: ID }, content: [{ type: 'text', text: 'Hi', marks: [tag] }] }])
     select(3)

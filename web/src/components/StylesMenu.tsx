@@ -6,7 +6,7 @@ import { MoreHorizontal, Plus, Search, Star, X } from 'lucide-react'
 import { firstFontFamily } from '../../../shared/fonts.ts'
 import { BLOCK_TYPOGRAPHY } from '../../../shared/styleProps.ts'
 import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
-import { ensureStyleFont } from '../fonts.ts'
+import { ensureStyleFont } from '../state/fonts.ts'
 import {
   createStyle,
   deleteStyle,
@@ -17,10 +17,10 @@ import {
   styleErrorMessage,
   updateStyle,
   useNamedStyles,
-} from '../namedStyles.ts'
-import { showNotice } from '../notices.ts'
-import { applyFailureMessage, applyStyle, captureProps, removeStyle } from '../styleCommands.ts'
-import type { CurrentStyle } from '../styleCommands.ts'
+} from '../state/namedStyles.ts'
+import { showNotice } from '../state/notices.ts'
+import { applyFailureMessage, applyStyle, captureProps, removeStyle } from '../editor/styleCommands.ts'
+import type { CurrentStyle } from '../editor/styleCommands.ts'
 import { ToolMenuButton } from './ToolbarParts.tsx'
 
 const SEARCH_AFTER = 8

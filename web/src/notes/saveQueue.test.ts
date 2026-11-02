@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NoteSummary } from '../../shared/types.ts'
+import type { NoteSummary } from '../../../shared/types.ts'
 import { createSaveQueue, decideDraft, DRAFT_DELAY_MS, DRAFT_PREFIX, isRetryable, KEEPALIVE_LIMIT_BYTES } from './saveQueue.ts'
 import type { Draft, SavePatch } from './saveQueue.ts'
 

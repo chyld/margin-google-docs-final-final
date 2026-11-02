@@ -161,8 +161,11 @@ The dev server and Docker both use port 5555, so stop one before starting the ot
   - `extensions.ts` is the single Tiptap extension list: the editor uses it, and the server checks documents against the schema it produces. When you add an extension, also add its node and mark names to the allowlists in `doc.ts`.
   - `font-catalog.json` is a snapshot of the Google Fonts catalog. Refresh it with `npm run fonts:catalog`.
 - `server/images.ts` stores and cleans up images; `server/fonts.ts` is the Google Fonts proxy and cache.
-- `web/` is a React + Vite app.
-  - `saveQueue.ts` is the autosave engine: debounced, one request per note at a time, retries, and local drafts.
-  - `components/Editor.tsx` sets up Tiptap; `imageInput.ts` handles pasting, dropping and uploading images; `fonts.ts` loads fonts and keeps favorites.
+- `web/src/` is a React + Vite app.
+  - `components/` is UI only. `components/Editor.tsx` sets up Tiptap.
+  - `editor/` is editor logic with no React: style commands, what formatting the selection has (`formatInfo.ts`), font sizes, links, and pasting, dropping and uploading images (`imageInput.ts`).
+  - `notes/` keeps notes safe: `saveQueue.ts` is the autosave engine (debounced, one request per note at a time, retries, local drafts).
+  - `state/` holds the small app-wide stores: saved styles, fonts, the Format sidebar, notices, theme, session.
+- `e2e/` holds the browser checks: `npm run e2e` (or `e2e/run.sh <suite>`) starts a throwaway server on port 5557 for each suite. Never point them at real data.
 
 See `PLAN.md` for the design and the roadmap, and `PLAN-PHASE2.md` for tables, images, sections and fonts.

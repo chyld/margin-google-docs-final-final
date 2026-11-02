@@ -11,9 +11,9 @@ import {
   hasBlockParts,
   hasInlineParts,
   isUuid,
-} from '../../shared/styleProps.ts'
-import type { NamedStyle, StyleBlock, StyleProps } from '../../shared/styleProps.ts'
-import { APPLY_STYLE_META } from '../../shared/namedStyle.ts'
+} from '../../../shared/styleProps.ts'
+import type { NamedStyle, StyleBlock, StyleProps } from '../../../shared/styleProps.ts'
+import { APPLY_STYLE_META } from '../../../shared/namedStyle.ts'
 
 type Block = { pos: number; node: PMNode }
 

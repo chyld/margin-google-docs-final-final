@@ -6,10 +6,10 @@ import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Root } from 'react-dom/client'
 import { Editor } from '@tiptap/core'
-import { extensions } from '../../shared/extensions.ts'
-import { FormatPanel } from './components/FormatPanel.tsx'
-import { getFormatPanel, resetFormatPanelForTesting } from './formatPanel.ts'
-import { setStylesForTesting } from './namedStyles.ts'
+import { extensions } from '../../../shared/extensions.ts'
+import { FormatPanel } from './FormatPanel.tsx'
+import { getFormatPanel, resetFormatPanelForTesting } from '../state/formatPanel.ts'
+import { setStylesForTesting } from '../state/namedStyles.ts'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

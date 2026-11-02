@@ -1,4 +1,4 @@
-import { isSafeLink } from '../../shared/doc.ts'
+import { isSafeLink } from '../../../shared/doc.ts'
 
 const HAS_SCHEME = /^[a-z][a-z\d+.-]*:/i
 const HOST_AND_PORT = /^[^\s/:@]+:\d+(?:[/?#]|$)/

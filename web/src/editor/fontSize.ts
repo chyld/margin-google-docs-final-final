@@ -1,8 +1,8 @@
 // Font sizes in points, as the toolbar shows them.
 import type { Editor } from '@tiptap/core'
-import { HEADING_LEVELS } from '../../shared/extensions.ts'
+import { HEADING_LEVELS } from '../../../shared/extensions.ts'
 import { runWithEndStyle } from './endStyle.ts'
-import { styleById } from './namedStyles.ts'
+import { styleById } from '../state/namedStyles.ts'
 import { effectiveTextProps } from './styleCommands.ts'
 import { parseFontSize } from './formatInfo.ts'
 

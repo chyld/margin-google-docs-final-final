@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState, NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { CellSelection } from '@tiptap/pm/tables'
-import { schema } from '../../shared/schema.ts'
-import type { NamedStyle, StyleProps } from '../../shared/styleProps.ts'
+import { schema } from '../../../shared/schema.ts'
+import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
 import { inspectFormatting } from './formatInfo.ts'
 import type { StylesStatus } from './formatInfo.ts'
 

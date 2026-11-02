@@ -4,7 +4,7 @@
 // Lives in scripts/ (Node types) because it reads the stylesheets from disk.
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { CANDY } from '../web/src/candy.ts'
+import { CANDY } from '../web/src/state/candy.ts'
 
 const appCss = readFileSync(new URL('../web/src/styles/app.css', import.meta.url), 'utf8')
 const editorCss = readFileSync(new URL('../web/src/styles/editor.css', import.meta.url), 'utf8')

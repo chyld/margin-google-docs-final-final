@@ -4,10 +4,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
-import { extensions } from '../../shared/extensions.ts'
-import { selectState } from './components/Toolbar.tsx'
+import { extensions } from '../../../shared/extensions.ts'
+import { selectState } from '../components/Toolbar.tsx'
 import { formatInfoFor } from './formatInfo.ts'
-import { setStylesForTesting, getStylesSnapshot } from './namedStyles.ts'
+import { setStylesForTesting, getStylesSnapshot } from '../state/namedStyles.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 type Json = Record<string, unknown>

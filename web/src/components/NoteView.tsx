@@ -8,12 +8,12 @@ import { checkSchema } from '../../../shared/schema.ts'
 import type { DocJSON, Note } from '../../../shared/types.ts'
 import { api, ApiError, StaleSessionError } from '../api.ts'
 import { displayTitle } from '../format.ts'
-import { pendingImageUploads, subscribePendingUploads } from '../imageInput.ts'
-import { decideDraft } from '../saveQueue.ts'
-import type { SavePatch, SaveQueue, SaveState } from '../saveQueue.ts'
+import { pendingImageUploads, subscribePendingUploads } from '../editor/imageInput.ts'
+import { decideDraft } from '../notes/saveQueue.ts'
+import type { SavePatch, SaveQueue, SaveState } from '../notes/saveQueue.ts'
 import { Editor } from './Editor.tsx'
 import { TagEditor } from './TagEditor.tsx'
-import { toggleFormatPanel, useFormatPanel } from '../formatPanel.ts'
+import { toggleFormatPanel, useFormatPanel } from '../state/formatPanel.ts'
 
 type NoteViewProps = {
   id: string

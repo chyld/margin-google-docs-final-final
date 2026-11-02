@@ -3,7 +3,7 @@ import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { ChainedCommands, Editor } from '@tiptap/core'
 import type { Mark } from '@tiptap/pm/model'
-import { styleById } from './namedStyles.ts'
+import { styleById } from '../state/namedStyles.ts'
 import { detachBlockStyles, endStyle, rememberAlignments, restoreAlignments, setTypeWhereAllowed } from './styleCommands.ts'
 import type { BlockTarget } from './styleCommands.ts'
 
@@ -17,7 +17,7 @@ const styleOf = (id: string) => styleById(id)?.props
 export function runWithEndStyle(
   editor: Editor,
   action: (chain: ChainedCommands) => ChainedCommands,
-  { materialize = true, focus = true, lookup = styleOf }: { materialize?: boolean; focus?: boolean; lookup?: (id: string) => import('../../shared/styleProps.ts').StyleProps | undefined } = {},
+  { materialize = true, focus = true, lookup = styleOf }: { materialize?: boolean; focus?: boolean; lookup?: (id: string) => import('../../../shared/styleProps.ts').StyleProps | undefined } = {},
 ): boolean {
   // An action that can't apply here (alignment in a section title, say) changes nothing, so it must
   // not end the style either: try it first without dispatching.

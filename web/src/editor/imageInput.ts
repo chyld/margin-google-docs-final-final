@@ -8,10 +8,10 @@ import type { Editor } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { EditorState } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { normalizeImageSrc, PAGE_CONTENT_WIDTH } from '../../shared/image.ts'
-import { api, ApiError, StaleSessionError } from './api.ts'
-import { showNotice } from './notices.ts'
-import { waitForReauth } from './session.ts'
+import { normalizeImageSrc, PAGE_CONTENT_WIDTH } from '../../../shared/image.ts'
+import { api, ApiError, StaleSessionError } from '../api.ts'
+import { showNotice } from '../state/notices.ts'
+import { waitForReauth } from '../state/session.ts'
 
 export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024

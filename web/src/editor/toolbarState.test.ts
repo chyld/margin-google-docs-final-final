@@ -5,9 +5,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
-import { extensions } from '../../shared/extensions.ts'
-import { selectState } from './components/Toolbar.tsx'
-import { setStylesForTesting } from './namedStyles.ts'
+import { extensions } from '../../../shared/extensions.ts'
+import { selectState } from '../components/Toolbar.tsx'
+import { setStylesForTesting } from '../state/namedStyles.ts'
 
 const BOLD = '11111111-1111-4111-8111-111111111111'
 const BOLD2 = '22222222-2222-4222-8222-222222222222'

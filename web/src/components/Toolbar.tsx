@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import type { ChainedCommands } from '@tiptap/core'
-import { runWithEndStyle, setParagraphType } from '../endStyle.ts'
+import { runWithEndStyle, setParagraphType } from '../editor/endStyle.ts'
 import {
   AlignCenter,
   AlignJustify,
@@ -36,18 +36,18 @@ import type { LucideIcon } from 'lucide-react'
 import { HEADING_LEVELS } from '../../../shared/extensions.ts'
 import { firstFontFamily } from '../../../shared/fonts.ts'
 import type { ImageAlign } from '../../../shared/image.ts'
-import { currentFontSize } from '../fontSize.ts'
-import { IMAGE_ACCEPT, uploadImages } from '../imageInput.ts'
+import { currentFontSize } from '../editor/fontSize.ts'
+import { IMAGE_ACCEPT, uploadImages } from '../editor/imageInput.ts'
 import { FontPicker } from './FontPicker.tsx'
 import { FontSize } from './FontSize.tsx'
 import { LinkPopover } from './LinkPopover.tsx'
-import { clearInlineFormatting, currentStyle, detachBlockStyles, effectiveTextProps } from '../styleCommands.ts'
-import type { CurrentStyle } from '../styleCommands.ts'
-import { styleById } from '../namedStyles.ts'
+import { clearInlineFormatting, currentStyle, detachBlockStyles, effectiveTextProps } from '../editor/styleCommands.ts'
+import type { CurrentStyle } from '../editor/styleCommands.ts'
+import { styleById } from '../state/namedStyles.ts'
 import { StylesMenu } from './StylesMenu.tsx'
 import { TableGrid, TableOptions } from './TableMenu.tsx'
 import { Group, MenuItem, MOD, Separator, ToolButton, ToolMenuButton, useDismiss } from './ToolbarParts.tsx'
-import { useFormatPanel } from '../formatPanel.ts'
+import { useFormatPanel } from '../state/formatPanel.ts'
 
 type Swatch = { name: string; value: string }
 

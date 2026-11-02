@@ -12,8 +12,8 @@ import {
   refreshFavorites,
   subscribeFavorites,
   toggleFavorite,
-} from '../fonts.ts'
-import { runWithEndStyle } from '../endStyle.ts'
+} from '../state/fonts.ts'
+import { runWithEndStyle } from '../editor/endStyle.ts'
 import { useDismiss } from './ToolbarParts.tsx'
 
 const ROW_HEIGHT = 32

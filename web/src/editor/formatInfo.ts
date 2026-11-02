@@ -3,9 +3,9 @@
 import type { Mark, Node as PMNode } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'
 import type { EditorState } from '@tiptap/pm/state'
-import { DEFAULT_FONT, firstFontFamily } from '../../shared/fonts.ts'
-import { BLOCK_TYPOGRAPHY, canonicalColor } from '../../shared/styleProps.ts'
-import type { NamedStyle, StyleBlock, StyleProps } from '../../shared/styleProps.ts'
+import { DEFAULT_FONT, firstFontFamily } from '../../../shared/fonts.ts'
+import { BLOCK_TYPOGRAPHY, canonicalColor } from '../../../shared/styleProps.ts'
+import type { NamedStyle, StyleBlock, StyleProps } from '../../../shared/styleProps.ts'
 
 /**
  * Where a value comes from:

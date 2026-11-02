@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Minus, Plus } from 'lucide-react'
-import { clampFontSize, FONT_SIZE_PRESETS, setFontSize } from '../fontSize.ts'
+import { clampFontSize, FONT_SIZE_PRESETS, setFontSize } from '../editor/fontSize.ts'
 import { MOD, useDismiss } from './ToolbarParts.tsx'
 
 type FontSizeProps = {

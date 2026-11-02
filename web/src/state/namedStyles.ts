@@ -2,9 +2,9 @@
 // Changes reach documents only through that stylesheet (notes are never rewritten), and only after
 // the server confirms them.
 import { useSyncExternalStore } from 'react'
-import { stylesheetFor } from '../../shared/styleProps.ts'
-import type { NamedStyle, StyleProps } from '../../shared/styleProps.ts'
-import { api, ApiError } from './api.ts'
+import { stylesheetFor } from '../../../shared/styleProps.ts'
+import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
+import { api, ApiError } from '../api.ts'
 import { onReauthenticated } from './session.ts'
 
 type Snapshot = { styles: NamedStyle[]; loaded: boolean; failed: boolean }

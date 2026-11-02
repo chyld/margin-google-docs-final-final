@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { EditorState, TextSelection } from '@tiptap/pm/state'
 import { undo, history } from '@tiptap/pm/history'
-import { schema } from '../../shared/schema.ts'
-import { detachOnTypeChange } from '../../shared/namedStyle.ts'
-import type { NamedStyle, StyleProps } from '../../shared/styleProps.ts'
+import { schema } from '../../../shared/schema.ts'
+import { detachOnTypeChange } from '../../../shared/namedStyle.ts'
+import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
 import { applyStyle, captureProps, clearInlineFormatting, currentStyle, removeStyle } from './styleCommands.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'

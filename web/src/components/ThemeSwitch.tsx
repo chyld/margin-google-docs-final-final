@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Monitor, Moon, Sun } from 'lucide-react'
-import { setTheme, useTheme } from '../theme.ts'
-import type { ThemeChoice } from '../theme.ts'
+import { setTheme, useTheme } from '../state/theme.ts'
+import type { ThemeChoice } from '../state/theme.ts'
 
 const OPTIONS: Array<{ value: ThemeChoice; label: string; Icon: typeof Sun }> = [
   { value: 'system', label: 'System', Icon: Monitor },

@@ -3,7 +3,7 @@ import { Loader2, WifiOff } from 'lucide-react'
 import { api, ApiError, bindUser } from '../api.ts'
 import type { Me } from '../api.ts'
 import { App } from '../App.tsx'
-import { broadcastAuth, onAuthBroadcast } from '../session.ts'
+import { broadcastAuth, onAuthBroadcast } from '../state/session.ts'
 import { LoginScreen } from './LoginScreen.tsx'
 
 type RootState =

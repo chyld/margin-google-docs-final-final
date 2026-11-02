@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
 import type { Editor } from '@tiptap/react'
 import { ExternalLink, Unlink } from 'lucide-react'
-import { isSafeHref, normalizeUrl } from '../links.ts'
+import { isSafeHref, normalizeUrl } from '../editor/links.ts'
 
 type LinkPopoverProps = {
   editor: Editor

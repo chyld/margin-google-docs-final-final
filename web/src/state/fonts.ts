@@ -1,7 +1,7 @@
 // Loads Google Fonts through Margin's server cache, and keeps the favorites list.
-import { BUNDLED_FONTS, firstFontFamily } from '../../shared/fonts.ts'
-import type { FontCatalogEntry } from '../../shared/fonts.ts'
-import { api, ApiError } from './api.ts'
+import { BUNDLED_FONTS, firstFontFamily } from '../../../shared/fonts.ts'
+import type { FontCatalogEntry } from '../../../shared/fonts.ts'
+import { api, ApiError } from '../api.ts'
 import { showNotice } from './notices.ts'
 import { onReauthenticated } from './session.ts'
 import { styleById } from './namedStyles.ts'
@@ -12,7 +12,7 @@ let catalogPromise: Promise<FontCatalogEntry[]> | null = null
 let catalogByFamily = new Map<string, FontCatalogEntry>()
 
 export function loadCatalog(): Promise<FontCatalogEntry[]> {
-  catalogPromise ??= import('../../shared/font-catalog.json').then(
+  catalogPromise ??= import('../../../shared/font-catalog.json').then(
     module => {
       const list = module.default as FontCatalogEntry[]
       catalogByFamily = new Map(list.map(entry => [entry.f, entry]))

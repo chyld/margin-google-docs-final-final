@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { PanelLeftClose, PanelLeftOpen, Plus, Search, X } from 'lucide-react'
 import type { NoteSummary, TagCount } from '../../../shared/types.ts'
-import { candyFor } from '../candy.ts'
+import { candyFor } from '../state/candy.ts'
 import { displayTitle, firstGrapheme, formatEdited } from '../format.ts'
 import { navigate, notePath } from '../router.ts'
 

@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react'
 import { ChevronUp, LogOut } from 'lucide-react'
 import type { User } from '../api.ts'
-import { candyFor } from '../candy.ts'
+import { candyFor } from '../state/candy.ts'
 import { ThemeSwitch } from './ThemeSwitch.tsx'
 import { firstGrapheme } from '../format.ts'
 import { useDismiss } from './ToolbarParts.tsx'
