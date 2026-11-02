@@ -6,8 +6,8 @@ import { candyFor } from '../state/candy.ts'
 import { displayTitle, firstGrapheme, formatEdited } from '../format.ts'
 import { navigate, notePath } from '../router.ts'
 import { trapTab } from '../focusTrap.ts'
+import type { ListState } from '../notes/noteList.ts'
 
-export type ListState = 'loading' | 'ready' | 'error'
 
 type SidebarProps = {
   notes: NoteSummary[]

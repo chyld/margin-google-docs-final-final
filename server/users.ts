@@ -3,7 +3,10 @@
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { transaction } from './db.ts'
-import { MAX_STYLE_NAME, styleNameKey } from '../shared/styleProps.ts'
+import { imageOwnership } from './images.ts'
+import { noteOwnership } from './notes.ts'
+import { createSettingsStore } from './settings.ts'
+import { styleOwnership } from './styles.ts'
 
 export type UserRow = {
   id: string
@@ -48,40 +51,7 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     setPassword: db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?'),
     rename: db.prepare('UPDATE users SET username = ? WHERE id = ?'),
     deleteSessions: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
-    countNotes: db.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id = ?'),
-    countImages: db.prepare('SELECT COUNT(*) AS n FROM image_owners WHERE user_id = ?'),
-    getFavorites: db.prepare("SELECT value FROM user_settings WHERE user_id = ? AND key = 'fontFavorites'"),
-    putFavorites: db.prepare(
-      `INSERT INTO user_settings (user_id, key, value) VALUES (?, 'fontFavorites', ?)
-       ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value`,
-    ),
-    moveNotes: db.prepare('UPDATE notes SET user_id = ? WHERE user_id = ?'),
-    moveNoteTags: db.prepare('UPDATE note_tags SET user_id = ? WHERE user_id = ?'),
-    copyImageOwners: db.prepare(
-      `INSERT OR IGNORE INTO image_owners (image_id, user_id, created_at)
-       SELECT image_id, ?, created_at FROM image_owners WHERE user_id = ?`,
-    ),
-    // Other settings: the target's own value wins. Favorites are merged separately.
-    moveSettings: db.prepare(
-      `INSERT INTO user_settings (user_id, key, value) SELECT ?, key, value FROM user_settings
-       WHERE user_id = ? AND key <> 'fontFavorites'
-       ON CONFLICT (user_id, key) DO NOTHING`,
-    ),
-    deleteNotes: db.prepare('DELETE FROM notes WHERE user_id = ?'),
-    deleteNoteTags: db.prepare('DELETE FROM note_tags WHERE user_id = ?'),
-    deleteImageOwners: db.prepare('DELETE FROM image_owners WHERE user_id = ?'),
-    deleteSettings: db.prepare('DELETE FROM user_settings WHERE user_id = ?'),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
-    countStyles: db.prepare('SELECT COUNT(*) AS n FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
-    deleteStyles: db.prepare('DELETE FROM styles WHERE user_id = ?'),
-    stylesOf: db.prepare('SELECT id, name, favorite_slot, deleted_at FROM styles WHERE user_id = ? ORDER BY favorite_slot, created_at'),
-    liveNameKeys: db.prepare('SELECT name_key FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
-    maxSlot: db.prepare('SELECT MAX(favorite_slot) AS n FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
-    moveStyle: db.prepare(
-      'UPDATE styles SET user_id = :to, name = :name, name_key = :nameKey, favorite_slot = :slot WHERE user_id = :from AND id = :id',
-    ),
-    dropStyle: db.prepare('DELETE FROM styles WHERE user_id = ? AND id = ?'),
-    styleExists: db.prepare('SELECT 1 FROM styles WHERE user_id = ? AND id = ?'),
   }
 
   function find(username: string): UserRow | null {
@@ -94,55 +64,28 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     return user
   }
 
-  function parseList(value: string | undefined): string[] {
-    if (value === undefined) return []
-    try {
-      const list = JSON.parse(value) as unknown
-      return Array.isArray(list) ? list.filter((item): item is string => typeof item === 'string') : []
-    } catch {
-      return []
-    }
+  // What an account owns lives in other tables; each module moves and deletes its own rows, all
+  // inside the one transaction of the account operation.
+  const notes = noteOwnership(db)
+  const images = imageOwnership(db)
+  const styles = styleOwnership(db)
+  const settings = createSettingsStore(db)
+
+  /** Moves everything one account owns to another. Inside a transaction. */
+  function transferOwnedData(fromId: string, toId: string): { notes: number; images: number; styles: number } {
+    const movedNotes = notes.transferOwned(fromId, toId)
+    const movedImages = images.transferOwned(fromId, toId)
+    settings.transferOwned(fromId, toId)
+    const movedStyles = styles.transferOwned(fromId, toId)
+    return { notes: movedNotes, images: movedImages, styles: movedStyles }
   }
 
-  /** Adds favorites to a user's list (their own first, then new ones, no duplicates). Inside a transaction. */
-  function mergeFavorites(userId: string, extra: string[]): void {
-    if (extra.length === 0) return
-    const own = parseList((sql.getFavorites.get(userId) as { value: string } | undefined)?.value)
-    sql.putFavorites.run(userId, JSON.stringify([...new Set([...own, ...extra])]))
-  }
-
-  function favoritesOf(userId: string): string[] {
-    return parseList((sql.getFavorites.get(userId) as { value: string } | undefined)?.value)
-  }
-
-  /**
-   * Moves every style from one user to another, keeping ids (so styled text stays linked). Name
-   * clashes get " (2)", " (3)"…; favorites go after the target's own. Inside a transaction.
-   */
-  function moveStyles(fromId: string, toId: string): number {
-    const taken = new Set((sql.liveNameKeys.all(toId) as Array<{ name_key: string }>).map(row => row.name_key))
-    let slot = Number((sql.maxSlot.get(toId) as { n: number | null }).n ?? 0)
-    const rows = sql.stylesOf.all(fromId) as Array<{ id: string; name: string; favorite_slot: number | null; deleted_at: number | null }>
-    let moved = 0
-    for (const row of rows) {
-      // The same id already at the target (e.g. moved there before): keep the target's copy.
-      if (sql.styleExists.get(toId, row.id)) {
-        sql.dropStyle.run(fromId, row.id)
-        continue
-      }
-      let name = row.name
-      if (row.deleted_at === null) {
-        for (let n = 2; taken.has(styleNameKey(name)); n += 1) {
-          const suffix = ` (${n})`
-          name = [...row.name].slice(0, MAX_STYLE_NAME - suffix.length).join('').trimEnd() + suffix
-        }
-        taken.add(styleNameKey(name))
-      }
-      const newSlot = row.deleted_at === null && row.favorite_slot !== null ? ++slot : null
-      sql.moveStyle.run({ from: fromId, to: toId, id: row.id, name, nameKey: styleNameKey(name), slot: newSlot })
-      if (row.deleted_at === null) moved += 1
-    }
-    return moved
+  /** Deletes everything an account owns (images themselves stay for the sweep). Inside a transaction. */
+  function deleteOwnedData(userId: string): void {
+    notes.deleteOwned(userId)
+    images.deleteOwned(userId)
+    settings.deleteOwned(userId)
+    styles.deleteOwned(userId)
   }
 
   return {
@@ -171,15 +114,7 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
         const source = require(from)
         const target = require(to)
         if (source.id === target.id) throw new UserError('usage', 'Pick two different users')
-        const notes = Number(sql.moveNotes.run(target.id, source.id).changes)
-        sql.moveNoteTags.run(target.id, source.id)
-        const images = Number(sql.copyImageOwners.run(target.id, source.id).changes)
-        sql.deleteImageOwners.run(source.id)
-        mergeFavorites(target.id, favoritesOf(source.id))
-        sql.moveSettings.run(target.id, source.id)
-        sql.deleteSettings.run(source.id)
-        const styles = moveStyles(source.id, target.id)
-        return { notes, images, styles }
+        return transferOwnedData(source.id, target.id)
       })
     },
 
@@ -214,10 +149,10 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     owned(username: string): { notes: number; images: number; favorites: number; styles: number } {
       const user = require(username)
       return {
-        notes: Number((sql.countNotes.get(user.id) as { n: number }).n),
-        images: Number((sql.countImages.get(user.id) as { n: number }).n),
-        favorites: favoritesOf(user.id).length,
-        styles: Number((sql.countStyles.get(user.id) as { n: number }).n),
+        notes: notes.countOwned(user.id),
+        images: images.countOwned(user.id),
+        favorites: settings.favoritesOf(user.id).length,
+        styles: styles.countOwned(user.id),
       }
     },
 
@@ -228,35 +163,27 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     delete(username: string, options: { transferTo?: string; purge?: boolean } = {}): { notes: number; images: number; styles: number } {
       return transaction(db, () => {
         const user = require(username)
-        let notes = Number((sql.countNotes.get(user.id) as { n: number }).n)
-        let images = Number((sql.countImages.get(user.id) as { n: number }).n)
-        const favorites = favoritesOf(user.id).length
-        const styles = Number((sql.countStyles.get(user.id) as { n: number }).n)
-        let movedStyles = styles
+        let result = {
+          notes: notes.countOwned(user.id),
+          images: images.countOwned(user.id),
+          styles: styles.countOwned(user.id),
+        }
+        const favorites = settings.favoritesOf(user.id).length
         if (options.transferTo !== undefined) {
           const target = require(options.transferTo)
           if (target.id === user.id) throw new UserError('usage', 'Pick a different user to transfer to')
-          notes = Number(sql.moveNotes.run(target.id, user.id).changes)
-          sql.moveNoteTags.run(target.id, user.id)
-          images = Number(sql.copyImageOwners.run(target.id, user.id).changes)
-          mergeFavorites(target.id, favoritesOf(user.id))
-          sql.moveSettings.run(target.id, user.id)
-          movedStyles = moveStyles(user.id, target.id)
-        } else if (notes + images + favorites + styles > 0 && !options.purge) {
+          result = transferOwnedData(user.id, target.id)
+        } else if (result.notes + result.images + favorites + result.styles > 0 && !options.purge) {
           throw new UserError(
             'conflict',
-            `"${username}" owns ${notes} note(s), ${images} image(s), ${styles} style(s) and ${favorites} favorite font(s). ` +
+            `"${username}" owns ${result.notes} note(s), ${result.images} image(s), ${result.styles} style(s) and ${favorites} favorite font(s). ` +
               'Use --transfer-to <user> or --purge',
           )
         }
-        sql.deleteNoteTags.run(user.id)
-        sql.deleteNotes.run(user.id)
-        sql.deleteImageOwners.run(user.id)
-        sql.deleteSettings.run(user.id)
-        sql.deleteStyles.run(user.id)
+        deleteOwnedData(user.id)
         sql.deleteSessions.run(user.id)
         sql.deleteUser.run(user.id)
-        return { notes, images, styles: movedStyles }
+        return result
       })
     },
 

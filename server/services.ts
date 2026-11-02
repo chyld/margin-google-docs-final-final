@@ -4,6 +4,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { createSessionStore } from './auth.ts'
 import { createNoteStore } from './notes.ts'
+import { createSettingsStore } from './settings.ts'
 import { createStyleStore } from './styles.ts'
 import { createUserStore } from './users.ts'
 
@@ -13,6 +14,7 @@ export function createServices(db: DatabaseSync) {
     sessions: createSessionStore(db),
     users: createUserStore(db),
     styles: createStyleStore(db),
+    settings: createSettingsStore(db),
   }
 }
 

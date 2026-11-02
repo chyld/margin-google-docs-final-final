@@ -25,7 +25,7 @@ import {
   verifyPassword,
 } from './auth.ts'
 import type { HashQueue, LoginLimiter, SessionUser } from './auth.ts'
-import { FontError, MAX_FAVORITES } from './fonts.ts'
+import { FontError } from './fonts.ts'
 import type { FontKind, FontService } from './fonts.ts'
 import { guard, isImageUpload } from './guard.ts'
 import type { HostRules } from './guard.ts'
@@ -33,6 +33,7 @@ import { sniffImageType } from './images.ts'
 import type { ImageStore } from './images.ts'
 import type { NoteChanges } from './notes.ts'
 import { createServices } from './services.ts'
+import { MAX_FAVORITES } from './settings.ts'
 import type { Services } from './services.ts'
 import { StyleError } from './styles.ts'
 
@@ -154,7 +155,7 @@ export function createApp(options: AppOptions): Hono {
   const limiter = options.limiter ?? createLoginLimiter()
   const hashQueue = options.hashQueue ?? createHashQueue()
   const clientIp = options.clientIp ?? socketIp
-  const { notes, sessions, users, styles } = options.services ?? createServices(db)
+  const { notes, sessions, users, styles, settings } = options.services ?? createServices(db)
   const app = new Hono()
 
   function writeCookie(c: Context, token: string, expiresAt: number): void {
@@ -455,16 +456,13 @@ export function createApp(options: AppOptions): Hono {
     }
   })
 
-  api.get('/fonts/favorites', c => c.json({ families: fonts.getFavorites(c.get('user').id) }))
+  api.get('/fonts/favorites', c => c.json({ families: settings.readFavorites(c.get('user').id, fonts.knows) }))
 
   api.put('/fonts/favorites', async c => {
     const body = await parseBody(c, favoritesSchema)
     if (!body.ok) return c.json({ error: body.error }, 400)
-    try {
-      return c.json({ families: fonts.setFavorites(c.get('user').id, body.value.families) })
-    } catch (error) {
-      return fontErrorResponse(c, error)
-    }
+    const result = settings.writeFavorites(c.get('user').id, body.value.families, fonts.knows)
+    return result.ok ? c.json({ families: result.families }) : c.json({ error: result.error }, 400)
   })
 
   const styleErrorResponse = (c: Context, error: unknown) => {

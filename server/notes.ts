@@ -232,3 +232,32 @@ export function createNoteStore(db: DatabaseSync) {
 
 export type NoteStore = ReturnType<typeof createNoteStore>
 export type UserNotes = ReturnType<NoteStore['forUser']>
+
+/**
+ * An account's notes (and their tags), for moving or deleting the account (server/users.ts). Plain
+ * statements: they run inside the caller's transaction and never open one.
+ */
+export function noteOwnership(db: DatabaseSync) {
+  const sql = {
+    count: db.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id = ?'),
+    moveNotes: db.prepare('UPDATE notes SET user_id = ? WHERE user_id = ?'),
+    moveTags: db.prepare('UPDATE note_tags SET user_id = ? WHERE user_id = ?'),
+    deleteTags: db.prepare('DELETE FROM note_tags WHERE user_id = ?'),
+    deleteNotes: db.prepare('DELETE FROM notes WHERE user_id = ?'),
+  }
+  return {
+    countOwned(userId: string): number {
+      return Number((sql.count.get(userId) as { n: number }).n)
+    },
+    /** Returns how many notes moved. */
+    transferOwned(fromId: string, toId: string): number {
+      const moved = Number(sql.moveNotes.run(toId, fromId).changes)
+      sql.moveTags.run(toId, fromId)
+      return moved
+    },
+    deleteOwned(userId: string): void {
+      sql.deleteTags.run(userId)
+      sql.deleteNotes.run(userId)
+    },
+  }
+}

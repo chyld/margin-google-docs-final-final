@@ -36,7 +36,7 @@ function build({ downloads = true } = {}) {
     fetchCalls.push({ url, init })
     return fetchHandler(url)
   }
-  const fonts = createFontService({ db, dir: paths.fonts, catalog: TEST_CATALOG, fetchImpl, downloads, prefetchLatin: false })
+  const fonts = createFontService({ dir: paths.fonts, catalog: TEST_CATALOG, fetchImpl, downloads, prefetchLatin: false })
   app = createApp({ db, hosts: { ports: ['5555'] }, images, fonts })
 }
 

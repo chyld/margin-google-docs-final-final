@@ -188,3 +188,60 @@ export function createStyleStore(db: DatabaseSync, now: () => number = Date.now)
 }
 
 export type StyleStore = ReturnType<typeof createStyleStore>
+
+/**
+ * An account's saved styles, for moving or deleting the account (server/users.ts). Runs inside the
+ * caller's transaction.
+ */
+export function styleOwnership(db: DatabaseSync) {
+  const sql = {
+    countLive: db.prepare('SELECT COUNT(*) AS n FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
+    deleteAll: db.prepare('DELETE FROM styles WHERE user_id = ?'),
+    stylesOf: db.prepare('SELECT id, name, favorite_slot, deleted_at FROM styles WHERE user_id = ? ORDER BY favorite_slot, created_at'),
+    liveNameKeys: db.prepare('SELECT name_key FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
+    maxSlot: db.prepare('SELECT MAX(favorite_slot) AS n FROM styles WHERE user_id = ? AND deleted_at IS NULL'),
+    moveStyle: db.prepare(
+      'UPDATE styles SET user_id = :to, name = :name, name_key = :nameKey, favorite_slot = :slot WHERE user_id = :from AND id = :id',
+    ),
+    dropStyle: db.prepare('DELETE FROM styles WHERE user_id = ? AND id = ?'),
+    styleExists: db.prepare('SELECT 1 FROM styles WHERE user_id = ? AND id = ?'),
+  }
+  return {
+    /** Styles that aren't deleted. */
+    countOwned(userId: string): number {
+      return Number((sql.countLive.get(userId) as { n: number }).n)
+    },
+    /**
+     * Moves every style from one user to another, keeping ids (so styled text stays linked). Name
+     * clashes get " (2)", " (3)"…; favorites go after the target's own. Returns how many live styles moved.
+     */
+    transferOwned(fromId: string, toId: string): number {
+      const taken = new Set((sql.liveNameKeys.all(toId) as Array<{ name_key: string }>).map(row => row.name_key))
+      let slot = Number((sql.maxSlot.get(toId) as { n: number | null }).n ?? 0)
+      const rows = sql.stylesOf.all(fromId) as Array<{ id: string; name: string; favorite_slot: number | null; deleted_at: number | null }>
+      let moved = 0
+      for (const row of rows) {
+        // The same id already at the target (e.g. moved there before): keep the target's copy.
+        if (sql.styleExists.get(toId, row.id)) {
+          sql.dropStyle.run(fromId, row.id)
+          continue
+        }
+        let name = row.name
+        if (row.deleted_at === null) {
+          for (let n = 2; taken.has(styleNameKey(name)); n += 1) {
+            const suffix = ` (${n})`
+            name = [...row.name].slice(0, MAX_STYLE_NAME - suffix.length).join('').trimEnd() + suffix
+          }
+          taken.add(styleNameKey(name))
+        }
+        const newSlot = row.deleted_at === null && row.favorite_slot !== null ? ++slot : null
+        sql.moveStyle.run({ from: fromId, to: toId, id: row.id, name, nameKey: styleNameKey(name), slot: newSlot })
+        if (row.deleted_at === null) moved += 1
+      }
+      return moved
+    },
+    deleteOwned(userId: string): void {
+      sql.deleteAll.run(userId)
+    },
+  }
+}

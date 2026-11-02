@@ -4,15 +4,8 @@ import type { Editor } from '@tiptap/react'
 import { ChevronDown, Search, Star } from 'lucide-react'
 import { BUNDLED_FONTS, DEFAULT_FONT, FONT_CATEGORIES, fontFamilyValue, genericFamily } from '../../../shared/fonts.ts'
 import type { FontCatalogEntry } from '../../../shared/fonts.ts'
-import {
-  ensureFont,
-  ensurePreview,
-  getFavorites,
-  loadCatalog,
-  refreshFavorites,
-  subscribeFavorites,
-  toggleFavorite,
-} from '../state/fonts.ts'
+import { ensureFont, ensurePreview, loadCatalog } from '../state/fonts.ts'
+import { getFavorites, refreshFavorites, subscribeFavorites, toggleFavorite } from '../state/fontFavorites.ts'
 import { runWithEndStyle } from '../editor/endStyle.ts'
 import { useDismiss } from './ToolbarParts.tsx'
 

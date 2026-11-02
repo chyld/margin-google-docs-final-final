@@ -25,6 +25,7 @@ import { hostChecker } from './guard.ts'
 import { createImageStore } from './images.ts'
 import { insertUser, signedInUser, TEST_COOKIE } from './testing.ts'
 import { createUserStore } from './users.ts'
+import { createSettingsStore } from './settings.ts'
 
 const HOST = 'localhost:5555'
 // Cheap parameters keep the tests fast; production uses SCRYPT_PARAMS.
@@ -38,9 +39,7 @@ let ip: string
 function build() {
   const paths = dataPaths(dataDir)
   const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
-  const fonts = createFontService({
-    db,
-    dir: paths.fonts,
+  const fonts = createFontService({ dir: paths.fonts,
     catalog: [{ f: 'Lora', k: 'Serif', w: [400], i: [] }],
     fetchImpl: async () => {
       throw new Error('offline')
@@ -463,7 +462,7 @@ describe('auth API', () => {
     await addUser('alice', 'correct horse battery')
     const paths = dataPaths(dataDir)
     const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
-    const fonts = createFontService({ db, dir: paths.fonts, catalog: [], prefetchLatin: false })
+    const fonts = createFontService({ dir: paths.fonts, catalog: [], prefetchLatin: false })
     // `margin-user passwd` lands right after scrypt accepted the old password.
     const users = createUserStore(db)
     app = createApp({
@@ -699,8 +698,7 @@ describe('user management', () => {
     const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
     images.save(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]), 'image/png', 'ghost')
     expect(db.prepare('SELECT COUNT(*) AS n FROM image_owners').get()).toEqual({ n: 0 })
-    const fonts = createFontService({ db, dir: paths.fonts, catalog: [{ f: 'Lora', k: 'Serif', w: [400], i: [] }], prefetchLatin: false })
-    fonts.setFavorites('ghost', ['Lora'])
+    expect(createSettingsStore(db).writeFavorites('ghost', ['Lora'], family => family === 'Lora')).toEqual({ ok: true, families: ['Lora'] })
     expect(db.prepare('SELECT COUNT(*) AS n FROM user_settings').get()).toEqual({ n: 0 })
   })
 

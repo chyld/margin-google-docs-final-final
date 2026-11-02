@@ -30,7 +30,7 @@ beforeEach(() => {
     db,
     hosts: { ports: ['5555'] },
     images: createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash }),
-    fonts: createFontService({ db, dir: paths.fonts, catalog: [], prefetchLatin: false }),
+    fonts: createFontService({ dir: paths.fonts, catalog: [], prefetchLatin: false }),
   })
 })
 

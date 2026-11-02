@@ -436,6 +436,36 @@ try {
   await page3.waitForTimeout(200)
   check('revisiting a new note does not refocus its title', !(await page3.evaluate(() => document.activeElement?.classList.contains('note-title'))))
 
+  // A slow, stale search answer never replaces the newer list.
+  const fullCount = (await api('/api/notes')).length
+  const slowSearch = url => url.pathname === '/api/notes' && url.searchParams.get('q') === 'slowq'
+  await page3.route(slowSearch, async route => {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    await route.continue().catch(() => undefined)
+  })
+  await page3.getByLabel('Search notes').fill('slowq')
+  await page3.waitForTimeout(400)
+  await page3.getByLabel('Search notes').fill('')
+  await page3.waitForTimeout(2200)
+  await page3.unroute(slowSearch)
+  const shownCount = await page3.locator('.note-item').count()
+  check('a slow, stale search answer never replaces the newer list', shownCount === fullCount, `shown=${shownCount} all=${fullCount}`)
+
+  // A save that lands while a list request is still on its way shows up in the list.
+  const slowList = url => url.pathname === '/api/notes' && !url.searchParams.get('q')
+  await page3.route(slowList, async route => {
+    await new Promise(resolve => setTimeout(resolve, 1200))
+    await route.continue().catch(() => undefined)
+  })
+  await page3.getByLabel('Search notes').fill('x')
+  await page3.waitForTimeout(400)
+  await page3.getByLabel('Search notes').fill('') // the full list is requested, and answers slowly
+  await page3.locator('.note-title').fill('Saved mid-request')
+  await page3.waitForTimeout(4000)
+  await page3.unroute(slowList)
+  const rowTitle = await page3.locator(`a[href="/notes/${doomedId}"] .note-item-title`).textContent()
+  check('a save landing mid-request is not lost from the list', rowTitle === 'Saved mid-request', `row=${rowTitle}`)
+
   // Screenshot of the formatted note for the user.
   await page3.goto(`${BASE}/notes/${noteA}`)
   await page3.locator('.document').waitFor()

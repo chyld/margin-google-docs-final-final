@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NoteSummary } from '../../../shared/types.ts'
-import { createSaveQueue, decideDraft, DRAFT_DELAY_MS, isRetryable, KEEPALIVE_LIMIT_BYTES } from './saveQueue.ts'
+import { createSaveQueue, DRAFT_DELAY_MS, isRetryable, KEEPALIVE_LIMIT_BYTES } from './saveQueue.ts'
+import type { SavePatch } from './saveQueue.ts'
+import { decideDraft } from './drafts.ts'
+import type { Draft } from './drafts.ts'
 
 const DRAFT_PREFIX = 'margin:draft:test-user:'
-import type { Draft, SavePatch } from './saveQueue.ts'
 
 type Call = {
   id: string

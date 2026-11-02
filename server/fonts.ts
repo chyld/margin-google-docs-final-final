@@ -7,7 +7,6 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { DatabaseSync } from 'node:sqlite'
 import { css2FamilyParam, fontSlug } from '../shared/fonts.ts'
 import type { FontCatalogEntry } from '../shared/fonts.ts'
 
@@ -23,7 +22,6 @@ const MAX_CONCURRENT_DOWNLOADS = 4
 const MAX_QUEUED_PREVIEWS = 24
 const PREVIEW_QUEUE_TIMEOUT_MS = 15_000
 const STALE_TEMP_MS = 24 * 60 * 60 * 1000
-export const MAX_FAVORITES = 200
 // css2 picks the font format from the User-Agent; a current desktop Chrome gets woff2.
 const USER_AGENT =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
@@ -145,7 +143,6 @@ export function rewriteFontCss(css: string, slug: string, familyName: string): R
 }
 
 export type FontServiceOptions = {
-  db: DatabaseSync
   dir: string
   catalog: FontCatalogEntry[]
   fetchImpl?: FetchLike
@@ -156,7 +153,6 @@ export type FontServiceOptions = {
 }
 
 export function createFontService({
-  db,
   dir,
   catalog,
   fetchImpl = fetch,
@@ -396,34 +392,12 @@ export function createFontService({
     })
   }
 
-  // Each user has their own favorites. The font files themselves are shared (public Google fonts).
-  const readFavorites = db.prepare("SELECT value FROM user_settings WHERE user_id = ? AND key = 'fontFavorites'")
-  const writeFavorites = db.prepare(
-    `INSERT INTO user_settings (user_id, key, value) SELECT id, 'fontFavorites', ? FROM users WHERE id = ?
-     ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value`,
-  )
-
-  function getFavorites(userId: string): string[] {
-    const row = readFavorites.get(userId) as { value: string } | undefined
-    if (!row) return []
-    try {
-      const value = JSON.parse(row.value) as unknown
-      return Array.isArray(value) ? value.filter((family): family is string => families.has(family as string)) : []
-    } catch {
-      return []
-    }
+  /** Whether the catalog has this family (favorites may only name these). */
+  function knows(family: string): boolean {
+    return families.has(family)
   }
 
-  function setFavorites(userId: string, list: string[]): string[] {
-    const unique = [...new Set(list)]
-    const unknown = unique.find(family => !families.has(family))
-    if (unknown !== undefined) throw new FontError(400, `Unknown font family "${unknown}"`)
-    if (unique.length > MAX_FAVORITES) throw new FontError(400, `At most ${MAX_FAVORITES} favorites`)
-    writeFavorites.run(JSON.stringify(unique), userId)
-    return unique
-  }
-
-  return { stylesheet, fontFile, getFavorites, setFavorites }
+  return { stylesheet, fontFile, knows }
 }
 
 export type FontService = ReturnType<typeof createFontService>

@@ -4,13 +4,13 @@ import { Selection } from '@tiptap/pm/state'
 import type { Editor as TiptapEditor } from '@tiptap/react'
 import { AlertTriangle, CircleCheck, CloudOff, Download, Loader2, PanelRight, Trash2 } from 'lucide-react'
 import { MAX_TITLE_LENGTH } from '../../../shared/constants.ts'
-import { checkSchema } from '../../../shared/schema.ts'
-import type { DocJSON, Note } from '../../../shared/types.ts'
+import type { Note } from '../../../shared/types.ts'
 import { api, ApiError, StaleSessionError } from '../api.ts'
 import { displayTitle } from '../format.ts'
 import { pendingImageUploads, subscribePendingUploads } from '../editor/imageInput.ts'
-import { decideDraft } from '../notes/saveQueue.ts'
-import type { SavePatch, SaveQueue, SaveState } from '../notes/saveQueue.ts'
+import { restoreForOpen } from '../notes/openNote.ts'
+import type { Prepared } from '../notes/openNote.ts'
+import type { SaveQueue, SaveState } from '../notes/saveQueue.ts'
 import { Editor } from './Editor.tsx'
 import { TagEditor } from './TagEditor.tsx'
 import { toggleFormatPanel, useFormatPanel } from '../state/formatPanel.ts'
@@ -35,58 +35,11 @@ type NoteViewProps = {
   onOpenTag: (tag: string) => void
 }
 
-type Prepared = { title: string; content: DocJSON; tags: string[]; notice: string | null }
-
 type LoadState =
   | { kind: 'loading' }
   | { kind: 'ready'; note: Note; prepared: Prepared }
   | { kind: 'missing' }
   | { kind: 'failed'; message: string }
-
-/** Combines the server copy with edits the server hasn't confirmed yet (in memory or in a draft). */
-function prepareNote(queue: SaveQueue, note: Note): Prepared {
-  const saved: Prepared = { title: note.title, content: note.content, tags: note.tags, notice: null }
-  // Pending edits, plus saved ones if this response is older than our last save (it raced the PATCH).
-  const local = queue.getLocalChanges(note.id, note.updatedAt)
-  queue.open(note.id, note.updatedAt)
-
-  if (local) {
-    return { title: local.title ?? note.title, content: local.content ?? note.content, tags: local.tags ?? note.tags, notice: null }
-  }
-
-  const draft = queue.readDraft(note.id)
-  const decision = decideDraft(draft, note)
-  if (!draft || decision === 'none') return saved
-  if (decision === 'discard') {
-    queue.discardDraft(note.id)
-    return saved
-  }
-  // A draft the editor can't open (e.g. written by another version) is left in storage, not restored.
-  if (draft.content !== undefined && !checkSchema(draft.content).ok) return saved
-
-  const restore =
-    decision === 'restore' ||
-    window.confirm(
-      `Margin found changes to "${displayTitle(note.title)}" from ${new Date(draft.editedAt).toLocaleString()} ` +
-        "that weren't confirmed as saved. The note was saved again after that.\n\nRestore those changes?",
-    )
-  if (!restore) {
-    queue.discardDraft(note.id)
-    return saved
-  }
-
-  const patch: SavePatch = {}
-  if (draft.title !== undefined) patch.title = draft.title
-  if (draft.content !== undefined) patch.content = draft.content
-  if (draft.tags !== undefined) patch.tags = draft.tags
-  queue.update(note.id, patch)
-  return {
-    title: patch.title ?? note.title,
-    content: patch.content ?? note.content,
-    tags: patch.tags ?? note.tags,
-    notice: "Restored changes that hadn't been saved yet.",
-  }
-}
 
 /** Shows or hides the Format sidebar. */
 function FormatToggle() {
@@ -196,7 +149,7 @@ export function NoteView(props: NoteViewProps) {
       .getNote(id, controller.signal)
       .then(note => {
         if (controller.signal.aborted) return
-        const prepared = prepareNote(queue, note)
+        const prepared = restoreForOpen(queue, note, { confirm: message => window.confirm(message) })
         setTitle(prepared.title)
         setTags(prepared.tags)
         // The sidebar row shows unsaved tags too (e.g. restored from a draft).

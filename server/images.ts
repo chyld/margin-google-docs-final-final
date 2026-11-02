@@ -255,3 +255,32 @@ export function createImageStore({ db, dir, trashDir, now = Date.now }: ImageSto
 }
 
 export type ImageStore = ReturnType<typeof createImageStore>
+
+/**
+ * Which images an account owns, for moving or deleting the account (server/users.ts). Only ownership
+ * rows: the image files and rows stay for the sweep. Runs inside the caller's transaction.
+ */
+export function imageOwnership(db: DatabaseSync) {
+  const sql = {
+    count: db.prepare('SELECT COUNT(*) AS n FROM image_owners WHERE user_id = ?'),
+    copy: db.prepare(
+      `INSERT OR IGNORE INTO image_owners (image_id, user_id, created_at)
+       SELECT image_id, ?, created_at FROM image_owners WHERE user_id = ?`,
+    ),
+    deleteAll: db.prepare('DELETE FROM image_owners WHERE user_id = ?'),
+  }
+  return {
+    countOwned(userId: string): number {
+      return Number((sql.count.get(userId) as { n: number }).n)
+    },
+    /** Copies the ownership rows, then drops the source's. Returns how many were new for the target. */
+    transferOwned(fromId: string, toId: string): number {
+      const copied = Number(sql.copy.run(toId, fromId).changes)
+      sql.deleteAll.run(fromId)
+      return copied
+    },
+    deleteOwned(userId: string): void {
+      sql.deleteAll.run(userId)
+    },
+  }
+}

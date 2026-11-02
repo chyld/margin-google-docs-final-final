@@ -1,8 +1,9 @@
 // Autosave engine. Framework-free so it can be unit tested with fake timers.
 // One queue per app; entries are keyed by note id so remounting the editor never creates a second writer.
 import type { DocJSON, NoteSummary } from '../../../shared/types.ts'
-import { normalizeTags } from '../../../shared/tags.ts'
 import { isAuthFailure } from './authFailure.ts'
+import { parseDraft } from './drafts.ts'
+import type { Draft, DraftStorage } from './drafts.ts'
 
 export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
 
@@ -12,15 +13,6 @@ export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
  */
 export type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'retrying' | 'paused' | 'error'
 export type SaveState = { status: SaveStatus; error: string | null }
-
-/** Unsaved edits kept in localStorage until the server confirms them. */
-export type Draft = SavePatch & {
-  editedAt: number
-  /** The note's server `updatedAt` this tab last saw when the draft was written. */
-  baseUpdatedAt: number | null
-}
-
-export type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 export type SendPatch = (id: string, patch: SavePatch, init?: { keepalive?: boolean }) => Promise<NoteSummary>
 
@@ -39,13 +31,7 @@ export type SaveQueueOptions = {
 
 // Browsers cap keepalive request bodies at 64 KiB in total; stay safely below it.
 export const KEEPALIVE_LIMIT_BYTES = 60_000
-export const DRAFT_PREFIX = 'margin:draft:'
 export const PAUSED_MESSAGE = 'Signed out. Sign in to keep saving'
-
-/** Drafts for one account: margin:draft:<userId>:<noteId>. */
-export function draftPrefixFor(userId: string): string {
-  return `${DRAFT_PREFIX}${userId}:`
-}
 // Drafts stringify the whole document, so batch rapid keystrokes.
 export const DRAFT_DELAY_MS = 300
 
@@ -91,27 +77,6 @@ function errorMessage(error: unknown): string {
 
 function hasKeys(patch: SavePatch | null): patch is SavePatch {
   return patch !== null && (patch.title !== undefined || patch.content !== undefined || patch.tags !== undefined)
-}
-
-export type DraftDecision = 'none' | 'discard' | 'restore' | 'ask'
-
-/**
- * What to do with a stored draft when its note is opened.
- * restore: nothing was saved since the draft's base, so the draft is newer.
- * ask: the note changed on the server after the draft's base; it may or may not include these edits.
- */
-export function decideDraft(
-  draft: Draft | null,
-  note: { title: string; content: DocJSON; tags?: string[]; updatedAt: number },
-): DraftDecision {
-  if (!draft) return 'none'
-  const sameTitle = draft.title === undefined || draft.title === note.title
-  const sameContent = draft.content === undefined || JSON.stringify(draft.content) === JSON.stringify(note.content)
-  // A draft from before tags existed has none: that means "unchanged".
-  const sameTags = draft.tags === undefined || draft.tags.join(' ') === (note.tags ?? []).join(' ')
-  if (sameTitle && sameContent && sameTags) return 'discard'
-  if (draft.baseUpdatedAt !== null && note.updatedAt <= draft.baseUpdatedAt) return 'restore'
-  return 'ask'
 }
 
 export function createSaveQueue(options: SaveQueueOptions) {
@@ -413,17 +378,7 @@ export function createSaveQueue(options: SaveQueueOptions) {
 
     readDraft(id: string): Draft | null {
       try {
-        const raw = storage?.getItem(draftPrefix + id)
-        if (!raw) return null
-        const draft = JSON.parse(raw) as Draft
-        if (typeof draft !== 'object' || draft === null || typeof draft.editedAt !== 'number') return null
-        // Invalid tags in a stored draft would make every save of this note fail: drop just the tags.
-        if (draft.tags !== undefined) {
-          const tags = Array.isArray(draft.tags) ? normalizeTags(draft.tags) : null
-          if (tags?.ok) draft.tags = tags.tags
-          else delete draft.tags
-        }
-        return draft
+        return parseDraft(storage?.getItem(draftPrefix + id))
       } catch {
         return null
       }
