@@ -32,9 +32,15 @@ export function setFontSize(editor: Editor, size: number): boolean {
   return runWithEndStyle(editor, c => c.setFontSize(`${clampFontSize(size)}pt`))
 }
 
+/**
+ * The size to step from: the size shown, or with mixed sizes (a blank box) the first size in the
+ * selection, so 18pt + 24pt stepped up becomes 19pt rather than collapsing to a default.
+ */
+export function stepBaseSize(editor: Editor): number {
+  return currentFontSize(editor) ?? parseFontSize(editor.getAttributes('textStyle').fontSize) ?? DEFAULT_SIZE
+}
+
 /** Steps the size at the cursor by `delta` points (Ctrl+Shift+. and Ctrl+Shift+,). */
 export function stepFontSize(editor: Editor, delta: number): boolean {
-  // Mixed sizes (blank box): step from normal text's size.
-  const size = currentFontSize(editor) ?? DEFAULT_SIZE
-  return setFontSize(editor, size + delta)
+  return setFontSize(editor, stepBaseSize(editor) + delta)
 }

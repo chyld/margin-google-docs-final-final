@@ -28,7 +28,6 @@ export type NoteChanges = {
   tags?: string[]
 }
 
-
 // Escape LIKE wildcards; pairs with `ESCAPE '\'` in the query.
 function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, match => `\\${match}`)

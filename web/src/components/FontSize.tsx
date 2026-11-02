@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Minus, Plus } from 'lucide-react'
-import { clampFontSize, FONT_SIZE_PRESETS, setFontSize } from '../editor/fontSize.ts'
+import { clampFontSize, FONT_SIZE_PRESETS, setFontSize, stepBaseSize } from '../editor/fontSize.ts'
 import { MOD, useDismiss } from './ToolbarParts.tsx'
 
 type FontSizeProps = {
@@ -31,7 +31,7 @@ export function FontSize({ editor, value, disabled }: FontSizeProps) {
   function step(delta: number) {
     // Step from what's typed in the box, if it's a number, rather than the size at the cursor.
     const typed = draft === null ? NaN : Number(draft)
-    const base = Number.isFinite(typed) && typed > 0 ? typed : (value ?? 11)
+    const base = Number.isFinite(typed) && typed > 0 ? typed : (value ?? stepBaseSize(editor))
     apply(clampFontSize(base + delta))
   }
 

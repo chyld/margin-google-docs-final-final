@@ -354,16 +354,10 @@ describe('any formatting-bar change ends the style (the text keeps its look)', (
   })
 
   it('clear formatting at the cursor types plain even with no style (direct bold only)', async () => {
-    const { clearFormatting } = await import('./commands.ts').catch(() => ({ clearFormatting: null }))
-    const { runWithEndStyle } = await import('./endStyle.ts')
-    const { clearInlineFormatting } = await import('./styleCommands.ts')
+    const { clearFormatting } = await import('./commands.ts')
     mount([{ type: 'paragraph', content: [{ type: 'text', text: 'Bold', marks: [{ type: 'bold' }] }] }])
     select(5)
-    const clear = clearFormatting
-      ? () => clearFormatting(editor! as never)
-      : () =>
-          runWithEndStyle(editor!, c => c.command(({ tr }) => (clearInlineFormatting(tr), true)).clearNodes(), { lookup, focus: false, materialize: false })
-    clear()
+    clearFormatting(editor! as never)
     type('X')
     expect(blocks()[0]!.content.at(-1)).toEqual({ type: 'text', text: 'X' })
   })
@@ -483,7 +477,6 @@ describe('the formatting shortcuts end the style (real key presses)', () => {
     expect(blocks()[0]!.attrs.styleId).toBe(ID)
   })
 })
-
 
 describe('code review fixes (grok)', () => {
   const props: StyleProps = { color: '#9334e6', block: 'h2' }

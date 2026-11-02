@@ -4,7 +4,7 @@ import { CellSelection } from '@tiptap/pm/tables'
 import { schema } from '../../../shared/schema.ts'
 import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
 import { inspectFormatting } from './formatInfo.ts'
-import type { StylesStatus } from './formatInfo.ts'
+import type { StylesStatus } from './styleIndex.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
 const OTHER = '22222222-2222-4222-8222-222222222222'

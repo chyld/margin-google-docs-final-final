@@ -8,7 +8,6 @@ import { navigate, notePath } from '../router.ts'
 import { trapTab } from '../focusTrap.ts'
 import type { ListState } from '../notes/noteList.ts'
 
-
 type SidebarProps = {
   notes: NoteSummary[]
   activeId: string | null
@@ -97,7 +96,6 @@ export function TagList({
 }
 
 const ROW_TAGS = 3
-
 
 // Re-render periodically so "5 minutes ago" stays accurate.
 function useNow(intervalMs: number): number {

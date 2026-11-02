@@ -28,7 +28,6 @@ type FormatPanelProps = {
   onOpenStyles: () => void
 }
 
-
 /** What a style itself sets, for the "Includes" line. */
 function includes(props: StyleProps): string {
   const parts: string[] = []

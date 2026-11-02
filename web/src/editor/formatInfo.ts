@@ -29,8 +29,6 @@ export type Field<T> = {
   label?: string
 }
 
-export type { StylesStatus }
-
 export type StyleRef =
   | { kind: 'none' }
   /** `ids`: up to three of the styles involved; `total`: how many (null = no style counts). */
@@ -55,6 +53,8 @@ export type FormatInfo = {
   codeBlock: boolean
   /** A collapsed cursor: the values are what the next typed character gets. */
   typingHere: boolean
+  /** Some text (or a text cursor) was read; false for a selected image or line, where text values are empty. */
+  hasText: boolean
   /**
    * Per text field: every part of the selection got its value from a mark or a saved style (not from
    * the page, an element or a missing style). The toolbar shows only these values: Bold lights up for
@@ -86,7 +86,6 @@ const CONTEXT_LABELS: Record<string, string> = {
   table: 'Table',
   details: 'Collapsible section',
 }
-
 
 const NODE_LABELS: Record<string, string> = {
   horizontalRule: 'Horizontal line',
@@ -199,6 +198,11 @@ class StyleIds {
   }
 }
 
+/** A mark's color as hex, or as written when it can't be (pasted red, oklch(…)); null when unsafe or absent. */
+function safeColor(raw: string | null): string | null {
+  return canonicalColor(raw) ?? (isSafeColor(raw) ? raw.trim() : null)
+}
+
 function tagOf(marks: readonly Mark[]): string | null {
   return (marks.find(mark => mark.type.name === 'namedStyle')?.attrs.id as string | undefined) ?? null
 }
@@ -249,9 +253,11 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
     const id = (node.attrs.styleId as string | null | undefined) ?? null
     paragraphStyles.add(id)
     const style = resolve(id)
+    const own = node.attrs.textAlign as Align | null | undefined
     if (id && !style && node.type.name !== 'codeBlock') {
       blockFold.add({ value: null, source: 'unresolved', styleId: id })
-      alignFold.add({ value: null, source: 'unresolved', styleId: id })
+      // The paragraph's own alignment is known even while its style isn't.
+      alignFold.add(own ? { value: own, source: 'direct' } : { value: null, source: 'unresolved', styleId: id })
       return
     }
     const linked = style?.props.block
@@ -260,7 +266,6 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
       const type = blockTypeOf(node)
       blockFold.add({ value: type, source: type === 'paragraph' || type === 'other' ? 'default' : 'direct' })
     }
-    const own = node.attrs.textAlign as Align | null | undefined
     const styled = style?.props.align as Align | undefined
     if (own) alignFold.add({ value: own, source: 'direct' })
     else if (styled && id) alignFold.add({ value: styled, source: 'style', styleId: id })
@@ -330,9 +335,7 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
 
     text.code.add({ value: isCode, source: isCode ? 'direct' : 'default' })
 
-    // Pasted text may keep colors canonicalColor can't rewrite as hex (red, oklch(…)): shown as is.
-    const rawColor = attr('textStyle', 'color')
-    const color = canonicalColor(rawColor) ?? (isSafeColor(rawColor) ? rawColor.trim() : null)
+    const color = safeColor(attr('textStyle', 'color'))
     // A style's color beats the link blue (.document span[data-style] a); a quote's grey only
     // reaches normal text and headings 1–2 (smaller headings keep their own color).
     const quoteColors = !piece.linkedBlock && (piece.block === 'paragraph' || piece.block === 'h1' || piece.block === 'h2' || piece.block === 'other')
@@ -354,7 +357,7 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
 
     text.highlight.add(
       has('highlight')
-        ? { value: canonicalColor(attr('highlight', 'color')) ?? HIGHLIGHT_DEFAULT, source: 'direct' }
+        ? { value: safeColor(attr('highlight', 'color')) ?? HIGHLIGHT_DEFAULT, source: 'direct' }
         : (unresolved ?? viaStyle<string | null>(canonicalColor(props?.highlight)) ?? { value: null, source: 'default' }),
     )
 
@@ -472,6 +475,7 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
     node: selection instanceof NodeSelection && !imageNode && !selection.node.isTextblock ? (NODE_LABELS[selection.node.type.name] ?? 'Block') : null,
     codeBlock: blockCount > 0 && codeBlocks === blockCount,
     typingHere: empty,
+    hasText: pieceCount > 0,
     explicit: {
       fontFamily: text.fontFamily.explicit,
       bold: text.bold.explicit,

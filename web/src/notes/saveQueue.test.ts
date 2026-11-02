@@ -511,7 +511,7 @@ describe('accounts: pause, resume, suspend, drain', () => {
   })
 })
 
-describe('tags in the save queue (Phase 7)', () => {
+describe('tags in the save queue', () => {
   it('sends tag-only edits, and merges tags with content without losing either', async () => {
     const queue = makeQueue()
     queue.update('a', { tags: ['work'] })

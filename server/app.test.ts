@@ -321,7 +321,7 @@ describe('static files and SPA fallback', () => {
   })
 })
 
-describe('note tags (Phase 7)', () => {
+describe('note tags', () => {
   const patch = (id: string, body: unknown) => request('PATCH', `/api/notes/${id}`, { body })
   const list = async (query = '') => (await (await request('GET', `/api/notes${query}`)).json()) as NoteSummary[]
   const counts = async () => ((await (await request('GET', '/api/tags')).json()) as { tags: Array<{ tag: string; count: number }> }).tags

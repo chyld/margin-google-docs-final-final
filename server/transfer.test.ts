@@ -21,8 +21,10 @@ function fixture(): DatabaseSync {
   run("INSERT INTO sessions (id, user_id, created_at, last_seen_at, expires_at, user_agent) VALUES ('sa', ?, 2, 2, 9999999999999, 'a')", ALICE)
   run("INSERT INTO sessions (id, user_id, created_at, last_seen_at, expires_at, user_agent) VALUES ('sb', ?, 2, 2, 9999999999999, 'b')", BOB)
 
+  let tick = 10
   const note = (id: string, user: string, title: string, tags: string[]) => {
-    run("INSERT INTO notes (id, title, content, text, created_at, updated_at, user_id) VALUES (?, ?, '{}', '', 3, 3, ?)", id, title, user)
+    tick += 1
+    run('INSERT INTO notes (id, title, content, text, created_at, updated_at, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)', id, title, `{"note":"${id}"}`, `text of ${id}`, tick, tick + 100, user)
     for (const tag of tags) run('INSERT INTO note_tags (note_id, user_id, tag) VALUES (?, ?, ?)', id, user, tag)
   }
   note('n-a1', ALICE, 'Alice tagged', ['ideas', 'work'])
@@ -30,7 +32,7 @@ function fixture(): DatabaseSync {
   note('n-b1', BOB, 'Bob tagged', ['ideas'])
 
   for (const [id, ext] of [[img('1'), 'png'], [img('2'), 'jpg']] as const) {
-    run('INSERT INTO images (id, ext, bytes, created_at) VALUES (?, ?, 10, 4)', id, ext)
+    run('INSERT INTO images (id, ext, bytes, created_at, unreferenced_since) VALUES (?, ?, ?, ?, ?)', id, ext, ext.length * 100, ext.length, ext === 'jpg' ? 77 : null)
   }
   run('INSERT INTO image_owners (image_id, user_id, created_at) VALUES (?, ?, 5)', img('1'), ALICE) // shared with Bob
   run('INSERT INTO image_owners (image_id, user_id, created_at) VALUES (?, ?, 6)', img('1'), BOB)
@@ -38,13 +40,15 @@ function fixture(): DatabaseSync {
 
   const style = (id: string, user: string, name: string, slot: number | null, deletedAt: number | null) =>
     run(
-      'INSERT INTO styles (id, user_id, name, name_key, props, favorite_slot, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, 8, 8, ?)',
+      'INSERT INTO styles (id, user_id, name, name_key, props, favorite_slot, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       id,
       user,
       name,
       styleNameKey(name),
-      '{"bold":true}',
+      JSON.stringify({ color: `#${id.slice(0, 6)}` }),
       slot,
+      (tick += 1),
+      tick + 500,
       deletedAt,
     )
   style('11111111-0000-4000-8000-000000000001', ALICE, 'Callout', 1, null) // clashes with Bob's "CALLOUT"
@@ -63,15 +67,16 @@ function fixture(): DatabaseSync {
   return db
 }
 
+// Every column of every table an account owns (the fixture's values are fixed and distinct).
 const TABLES = {
-  users: 'SELECT id, username FROM users ORDER BY id',
-  sessions: 'SELECT id, user_id FROM sessions ORDER BY id',
-  notes: 'SELECT id, user_id, title FROM notes ORDER BY id',
-  note_tags: 'SELECT note_id, user_id, tag FROM note_tags ORDER BY note_id, tag',
-  images: 'SELECT id, ext FROM images ORDER BY id',
-  image_owners: 'SELECT image_id, user_id, created_at FROM image_owners ORDER BY image_id, user_id',
-  styles: 'SELECT id, user_id, name, name_key, favorite_slot, deleted_at FROM styles ORDER BY user_id, id',
-  user_settings: 'SELECT user_id, key, value FROM user_settings ORDER BY user_id, key',
+  users: 'SELECT * FROM users ORDER BY id',
+  sessions: 'SELECT * FROM sessions ORDER BY id',
+  notes: 'SELECT * FROM notes ORDER BY id',
+  note_tags: 'SELECT * FROM note_tags ORDER BY note_id, tag',
+  images: 'SELECT * FROM images ORDER BY id',
+  image_owners: 'SELECT * FROM image_owners ORDER BY image_id, user_id',
+  styles: 'SELECT * FROM styles ORDER BY user_id, id',
+  user_settings: 'SELECT * FROM user_settings ORDER BY user_id, key',
 }
 
 function dump(db: DatabaseSync) {

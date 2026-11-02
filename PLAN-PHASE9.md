@@ -422,12 +422,13 @@ The favorites half of `state/fonts.ts` (load, refresh, toggle, the write queue, 
 2. Old pre-accounts drafts in a browser that hasn't opened Margin since the claim are no longer adopted. The owner accepted this.
 
 **The toolbar now agrees with the Format panel (§5 2.1)** in these edge cases:
-3. **Mixed selections:** when alignment, font, size or color differ across the selection, the toolbar shows blank instead of the first piece's value. The panel says "Mixed".
+3. **Mixed selections:** when alignment, font, size or color differ across the selection, the toolbar shows blank instead of the first piece's value, and paragraphs of different types show "—". The panel says "Mixed". Stepping the size (Ctrl+Shift+. or the +/− buttons) still starts from the first size in the selection.
 4. **Highlight without a color:** it shows the yellow it's painted with, instead of nothing.
 5. **Right after "Clear formatting" at the cursor:** the font, size and color boxes show what you'll type next, instead of the old text's values. Today they're stale, while Bold and Italic are already right.
-6. **A styled link whose style underlines:** Underline shows off, like every link, because the link supplies the underline.
+6. **A styled link whose style underlines, or a checked item whose style strikes through:** Underline (or Strikethrough) shows off, because the link (or the checked item) draws it. **Inline code inside a style that sets a font:** the font box is blank, because code uses the page's monospace font.
 7. **Rare ranges:** a selection crossing a code block, or covering only empty styled lines, follows the panel's reading.
-8. **Colors written as `rgb(…)`** show as their hex value (`#188038`). Named colors (`red`) still show as written.
+8. **Colors written as `rgb(…)`** show as their hex value (`#188038`). Named and other colors (`red`, `oklch(…)`) show as written, for text and highlight alike, in the toolbar and now also in the Format sidebar (which used to show the default color for them).
+9. **Draft images:** the once-per-page "keep these images" ping for local drafts counts only references with a stored image's extension (`.png`, `.jpg`, `.gif`, `.webp`), the same rule the server's cleanup uses. Image nodes can't hold anything else, so this only drops references typed as plain text.
 
 Everything else must be identical. The browser suites, the characterization tests and the unit tests are the proof.
 
@@ -502,3 +503,20 @@ Everything else must be identical. The browser suites, the characterization test
 - **The focus trap** has one option, `recaptureOutside` (the sign-in dialog). The Format sheet now uses the standard selector and visibility filter. It has no inputs or links, and the sheet is always visible, so nothing changes.
 - **`toolbarState.test.ts`**: eight cases changed when the toolbar moved onto `formatInfo`. Each is marked "Changed" in the test, and each is one of §9 items 3–8.
 - **Element colors** are `ELEMENT_COLORS` in `shared/styleProps.ts`.
+
+**After the step 0–2 code review** (Sonnet, Codex Sol, Codex Terra, Grok, Muse, DeepSeek, GLM):
+- **Fixed:**
+  - A highlight color the hex rule can't rewrite (`yellow`, `oklch(…)`) showed as the default yellow. It now shows as written, like text colors.
+  - A paragraph with its own alignment whose style hadn't loaded showed `left`. Its own alignment now shows.
+  - The size box went blank with an image or line selected. It shows 11 again (`FormatInfo.hasText`).
+  - Stepping the size of a mixed selection started from 11, collapsing 18pt + 24pt to 12pt. It steps from the first size again (`stepBaseSize`).
+- **Tests:**
+  - The transfer snapshots now cover every column, with distinct values. They were re-recorded against the step 0 code and match the current code exactly.
+  - New tests: the labels, and the toolbar cases above.
+  - The dead fallback import in `styleContinuation.test.ts` is gone.
+- **`e2e/run.sh`:**
+  - It refuses to run when port 5557 is already in use, so the suites can't wipe a server they didn't start.
+  - It checks that its server started.
+  - It requires a zero exit status as well as a passing summary.
+- **Listed in §9 instead of changed back:** a checked item's style strikethrough, inline code's font, mixed paragraph types, the sidebar showing pasted colors, and draft image references.
+- **Cleanups:** "Phase N" in test names, `CONTENT_TYPES` derived from `IMAGE_TYPES`, double blank lines.

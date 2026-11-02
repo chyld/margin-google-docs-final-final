@@ -14,6 +14,7 @@ const BOLD = '11111111-1111-4111-8111-111111111111'
 const BOLD2 = '22222222-2222-4222-8222-222222222222'
 const H2 = '33333333-3333-4333-8333-333333333333'
 const UNDERLINE = '44444444-4444-4444-8444-444444444444'
+const STRIKE = '55555555-5555-4555-8555-555555555555'
 const MISSING = '99999999-9999-4999-8999-999999999999'
 const style = (id: string, name: string, props: Record<string, unknown>) => ({ id, name, props, favoriteSlot: null, deleted: false, createdAt: 0, updatedAt: 0 })
 setStylesForTesting([
@@ -21,6 +22,7 @@ setStylesForTesting([
   style(BOLD2, 'Bold green', { bold: true, color: '#188038' }),
   style(H2, 'Section', { block: 'h2', align: 'center' }),
   style(UNDERLINE, 'Underlined', { underline: true }),
+  style(STRIKE, 'Struck', { strike: true }),
 ])
 
 type Json = Record<string, unknown>
@@ -486,12 +488,57 @@ describe('toolbar display', () => {
     ])
     current.view.dispatch(current.state.tr.setSelection(NodeSelection.create(current.state.doc, 3)))
     const state = read(current)
-    expect({ imageSelected: state.imageSelected, imageAlign: state.imageAlign, align: state.align }).toMatchInlineSnapshot(`
-      {
-        "align": "left",
-        "imageAlign": "center",
-        "imageSelected": true,
-      }
-    `)
+    // The size box shows normal text's size (it's disabled here).
+    expect({ imageSelected: state.imageSelected, imageAlign: state.imageAlign, align: state.align, fontSize: state.fontSize }).toEqual({
+      imageSelected: true,
+      imageAlign: 'center',
+      align: 'left',
+      fontSize: 11,
+    })
+  })
+
+  // Added after the step 0-2 code review (values checked against the pre-Phase-9 toolbar).
+  it('highlight colors that are not hex are shown as written', () => {
+    expect(shown([p([text('marked', [{ type: 'highlight', attrs: { color: 'yellow' } }])])], 1, 7).highlight).toBe('yellow')
+    editor?.destroy()
+    expect(shown([p([text('marked', [{ type: 'highlight', attrs: { color: 'oklch(0.9 0.1 100)' } }])])], 1, 7).highlight).toBe('oklch(0.9 0.1 100)')
+  })
+
+  it('a centered paragraph whose style is missing still shows centered', () => {
+    expect(shown([p([text('Hi')], { textAlign: 'center', styleId: MISSING })], 2).align).toBe('center')
+  })
+
+  // Changed: like a link's underline, a checked item draws the strikethrough, so it shows off.
+  it('a checked item whose style strikes through', () => {
+    const list = { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: true }, content: [p([text('done', [named(STRIKE)])])] }] }
+    expect(shown([list], 4, 6).strike).toBe(false)
+  })
+
+  // Changed: code's font is the page's monospace, so the font box is blank (before: the style's font).
+  it('inline code inside a style that sets a font', () => {
+    expect(shown([p([text('x = 1', [{ type: 'code' }, named(BOLD)])])], 1, 6).fontFamily).toBeNull()
+  })
+
+  // Changed: paragraphs of different types show "—" (before: the first one's style type).
+  it('a selection from a styled heading into a plain paragraph', () => {
+    expect(shown([p([text('one')], { styleId: H2 }), p([text('two')])], 2, 8).block).toBe('other')
+  })
+})
+
+describe('stepping the size', () => {
+  it('steps a mixed-size selection from its first size', async () => {
+    const { stepBaseSize } = await import('./fontSize.ts')
+    const current = open([p([text('one ', [textStyle({ fontSize: '18pt' })]), text('two', [textStyle({ fontSize: '24pt' })])])])
+    current.view.dispatch(current.state.tr.setSelection(TextSelection.create(current.state.doc, 1, 8)))
+    expect(stepBaseSize(current)).toBe(18)
+  })
+
+  it('steps a single size from that size, and plain text from 11', async () => {
+    const { stepBaseSize } = await import('./fontSize.ts')
+    const current = open([p([text('one', [textStyle({ fontSize: '14pt' })])]), p([text('two')])])
+    current.view.dispatch(current.state.tr.setSelection(TextSelection.create(current.state.doc, 1, 4)))
+    expect(stepBaseSize(current)).toBe(14)
+    current.view.dispatch(current.state.tr.setSelection(TextSelection.create(current.state.doc, 7)))
+    expect(stepBaseSize(current)).toBe(11)
   })
 })

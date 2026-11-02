@@ -15,13 +15,8 @@ import { IMAGE_NAME, IMAGE_TYPES, imageIdsIn } from '../shared/imageRules.ts'
 import type { ImageType } from '../shared/imageRules.ts'
 import { transaction } from './db.ts'
 
-export const CONTENT_TYPES: Record<string, ImageType> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  gif: 'image/gif',
-  webp: 'image/webp',
-}
-
+/** Stored extension → content type (the inverse of IMAGE_TYPES). */
+export const CONTENT_TYPES = Object.fromEntries(Object.entries(IMAGE_TYPES).map(([type, ext]) => [ext, type])) as Record<string, ImageType>
 
 const DAY = 24 * 60 * 60 * 1000
 export const UNREFERENCED_GRACE_MS = 30 * DAY

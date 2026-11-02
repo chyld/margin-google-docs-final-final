@@ -61,9 +61,12 @@ function nodeBlock(state: EditorState): BlockType {
   return node.type.name === 'paragraph' ? 'paragraph' : 'other'
 }
 
-/** The size box's value: a style that hasn't loaded shows the paragraph type's default size. */
+/**
+ * The size box's value: blank when sizes are mixed. Where there's no size to read (a style that
+ * hasn't loaded, a selected image), the paragraph type's default size.
+ */
 export function toolbarFontSize(info: FormatInfo, state: EditorState): number | null {
-  if (info.text.fontSize.source !== 'unresolved') return info.text.fontSize.value
+  if (info.hasText && info.text.fontSize.source !== 'unresolved') return info.text.fontSize.value
   const block = nodeBlock(state)
   return parseFontSize(BLOCK_TYPOGRAPHY[block === 'other' ? 'paragraph' : block].fontSize)
 }

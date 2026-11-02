@@ -25,14 +25,23 @@ failed=0
 for suite in "$@"; do
   [ -f "e2e/$suite.mjs" ] || { echo "$suite: no such suite"; failed=1; continue; }
   stop
+  # The suites delete data: never let them reach a server this script didn't just start.
+  if curl -s -o /dev/null --max-time 1 "http://127.0.0.1:$PORT/"; then
+    echo "port $PORT is already in use; stop that server first"; exit 1
+  fi
   rm -rf "$DATA" && mkdir -p "$DATA"
   DATA_DIR=$DATA node server/cli.ts add e2e --password-stdin <<< 'e2e-password-123' >/dev/null
-  (HOST=127.0.0.1 PORT=$PORT PUBLIC_PORT=$PORT DATA_DIR=$DATA STATIC_DIR=dist/web nohup node server/index.ts > "$DATA.log" 2>&1 &)
+  HOST=127.0.0.1 PORT=$PORT PUBLIC_PORT=$PORT DATA_DIR=$DATA STATIC_DIR=dist/web nohup node server/index.ts > "$DATA.log" 2>&1 &
+  server=$!
   for _ in $(seq 1 40); do curl -sf -H "Host: localhost:$PORT" "http://127.0.0.1:$PORT/api/health" >/dev/null && break; sleep 0.25; done
+  if ! kill -0 "$server" 2>/dev/null; then
+    echo "$suite: the test server didn't start"; tail -5 "$DATA.log"; failed=1; continue
+  fi
   out=$(MARGIN_URL=http://localhost:$PORT MARGIN_DATA=$DATA MARGIN_NETWORK_FONTS=1 timeout 600 node "e2e/$suite.mjs" 2>&1)
+  status=$?
   summary=$(grep -E 'checks passed|checks failed' <<< "$out" | tail -1)
-  if grep -qE '^FAIL' <<< "$out" || [ -z "$summary" ]; then
-    failed=1; echo "$suite: FAILED"; grep -E '^FAIL|Error' <<< "$out" | head -8; [ -n "$summary" ] && echo "  $summary"
+  if [ "$status" -ne 0 ] || grep -qE '^FAIL' <<< "$out" || [ -z "$summary" ]; then
+    failed=1; echo "$suite: FAILED (exit $status)"; grep -E '^FAIL|Error' <<< "$out" | head -8; [ -n "$summary" ] && echo "  $summary"
   else
     echo "$suite: $summary"
   fi

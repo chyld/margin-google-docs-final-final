@@ -92,7 +92,7 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['primary-ink', 'primary'],
   ['primary-ink', 'primary-hover'],
   ['danger', 'surface'],
-  // Phase 7 tags: the tag on the active note row, chip hover, the tag field's error.
+  // Tags: the tag on the active note row, chip hover, the tag field's error.
   ['accent-ink', 'surface-solid'],
   ['danger', 'bg'],
   ['danger', 'canvas'],
