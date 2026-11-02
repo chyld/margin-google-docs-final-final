@@ -34,7 +34,8 @@ let fetchImpl: FetchLike = async () => {
 function buildApp() {
   const paths = dataPaths(dataDir)
   const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
-  const fonts = createFontService({ dir: paths.fonts,
+  const fonts = createFontService({
+    dir: paths.fonts,
     catalog: TEST_CATALOG,
     fetchImpl: (url, init) => fetchImpl(url, init),
     prefetchLatin: false,

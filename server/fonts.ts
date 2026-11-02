@@ -4,11 +4,13 @@
 // and fonts.gstatic.com (exact host check, no redirects). Each family has two independent
 // stylesheets, the full one and a tiny "preview" one that only covers the family's own name, and
 // each stylesheet has its own manifest, so nothing is ever read-modify-written.
-import { createHash, randomBytes } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { css2FamilyParam, fontSlug } from '../shared/fonts.ts'
 import type { FontCatalogEntry } from '../shared/fonts.ts'
+import { hasFontSignature, isGstaticUrl, rewriteFontCss } from './fontCss.ts'
+import { HttpError } from './http.ts'
 
 export type FontKind = 'full' | 'preview'
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>
@@ -29,16 +31,15 @@ const USER_AGENT =
 const SLUG = /^[a-z0-9-]+$/
 export const FONT_FILE = /^[0-9a-f]{16}\.(woff2|woff|ttf)$/
 const FONT_TYPES: Record<string, string> = { woff2: 'font/woff2', woff: 'font/woff', ttf: 'font/ttf' }
-const FORMAT_EXT: Record<string, string> = { woff2: 'woff2', woff: 'woff', truetype: 'ttf' }
 
-export class FontError extends Error {
-  readonly status: 400 | 404 | 502 | 503
+/** Answers as { error } with its status (no code). */
+export class FontError extends HttpError {
+  declare readonly status: 400 | 404 | 502 | 503
   /** Google's HTTP status, when Google answered with an error. */
   readonly upstreamStatus: number | undefined
 
   constructor(status: 400 | 404 | 502 | 503, message: string, upstreamStatus?: number) {
-    super(message)
-    this.status = status
+    super(status, message)
     this.upstreamStatus = upstreamStatus
   }
 }
@@ -51,95 +52,6 @@ function writeAtomic(path: string, data: string | Uint8Array): void {
   const temp = `${path}.tmp-${randomBytes(6).toString('hex')}`
   writeFileSync(temp, data)
   renameSync(temp, path)
-}
-
-/** Only https://fonts.gstatic.com/… with no credentials or port. */
-export function isGstaticUrl(raw: string): boolean {
-  try {
-    const url = new URL(raw)
-    return (
-      url.protocol === 'https:' &&
-      url.hostname === 'fonts.gstatic.com' &&
-      url.port === '' &&
-      url.username === '' &&
-      url.password === ''
-    )
-  } catch {
-    return false
-  }
-}
-
-function hasFontSignature(bytes: Uint8Array, ext: string): boolean {
-  const tag = String.fromCharCode(...bytes.subarray(0, 4))
-  if (ext === 'woff2') return tag === 'wOF2'
-  if (ext === 'woff') return tag === 'wOFF'
-  return tag === '\u0000\u0001\u0000\u0000' || tag === 'true' || tag === 'OTTO'
-}
-
-type Rewritten = { css: string; manifest: Record<string, string>; latinFiles: string[] }
-
-// Values Google uses in @font-face; anything else drops the block.
-const SAFE_VALUE = {
-  style: /^(?:normal|italic|oblique)$/,
-  weight: /^\d{1,4}(?: \d{1,4})?$/,
-  stretch: /^[\d.]+%(?: [\d.]+%)?$|^[a-z-]+$/,
-  range: /^[Uu+0-9A-Fa-f?,\s-]+$/,
-}
-
-/**
- * Rebuilds Google's stylesheet from known-safe parts only: one @font-face per block, with the
- * family name we choose, validated style/weight/range values and a local URL for the font file.
- */
-export function rewriteFontCss(css: string, slug: string, familyName: string): Rewritten {
-  const manifest: Record<string, string> = {}
-  const latinFiles: string[] = []
-  const blocks: string[] = []
-  const BLOCK = /(?:\/\*\s*([^*]*?)\s*\*\/\s*)?@font-face\s*\{([^}]*)\}/g
-
-  for (const match of css.matchAll(BLOCK)) {
-    const label = (match[1] ?? '').trim()
-    const declarations = new Map<string, string>()
-    for (const part of (match[2] ?? '').split(';')) {
-      const colon = part.indexOf(':')
-      if (colon > 0) declarations.set(part.slice(0, colon).trim().toLowerCase(), part.slice(colon + 1).trim())
-    }
-
-    const src = /^url\(\s*(['"]?)([^'")\s]+)\1\s*\)\s*format\(\s*['"]?([\w-]+)['"]?\s*\)$/.exec(declarations.get('src') ?? '')
-    if (!src) continue
-    const url = src[2] as string
-    const ext = FORMAT_EXT[src[3] as string]
-    if (!ext || !isGstaticUrl(url)) continue
-
-    const style = declarations.get('font-style') ?? 'normal'
-    const weight = declarations.get('font-weight') ?? '400'
-    const stretch = declarations.get('font-stretch')
-    const range = declarations.get('unicode-range')
-    if (!SAFE_VALUE.style.test(style) || !SAFE_VALUE.weight.test(weight)) continue
-    if (stretch !== undefined && !SAFE_VALUE.stretch.test(stretch)) continue
-    if (range !== undefined && !SAFE_VALUE.range.test(range)) continue
-
-    const file = `${createHash('sha1').update(url).digest('hex').slice(0, 16)}.${ext}`
-    manifest[file] = url
-    if (label === 'latin' || label === 'latin-ext') latinFiles.push(file)
-
-    blocks.push(
-      [
-        label && /^[\w\s[\]-]+$/.test(label) ? `/* ${label} */` : '',
-        '@font-face {',
-        `  font-family: '${familyName}';`,
-        `  font-style: ${style};`,
-        `  font-weight: ${weight};`,
-        stretch ? `  font-stretch: ${stretch};` : '',
-        '  font-display: swap;',
-        `  src: url(/api/fonts/file/${slug}/${file}) format('${src[3]}');`,
-        range ? `  unicode-range: ${range.replace(/\s+/g, ' ')};` : '',
-        '}',
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    )
-  }
-  return { css: blocks.length ? `${blocks.join('\n')}\n` : '', manifest, latinFiles }
 }
 
 export type FontServiceOptions = {

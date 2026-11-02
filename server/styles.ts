@@ -11,6 +11,7 @@ import {
 } from '../shared/styleProps.ts'
 import type { NamedStyle, StyleProps } from '../shared/styleProps.ts'
 import { transaction } from './db.ts'
+import { HttpError } from './http.ts'
 
 type StyleRow = {
   id: string
@@ -23,13 +24,12 @@ type StyleRow = {
   deleted_at: number | null
 }
 
-export class StyleError extends Error {
-  status: 400 | 404 | 409
-  code: string
+/** Answers as { error, code } with its status. */
+export class StyleError extends HttpError {
+  declare readonly status: 400 | 404 | 409
+  declare readonly code: string
   constructor(status: 400 | 404 | 409, code: string, message: string) {
-    super(message)
-    this.status = status
-    this.code = code
+    super(status, message, code)
   }
 }
 

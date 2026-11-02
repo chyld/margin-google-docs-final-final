@@ -157,14 +157,16 @@ The dev server and Docker both use port 5555, so stop one before starting the ot
 
 - `server/` is a Hono app on Node 24, run directly as TypeScript (Node strips the types; there's no build step). It uses the built-in `node:sqlite`.
   - Type-only imports must use `import type`, and local imports need `.ts` extensions.
-- `shared/` holds the types and the document validator (`doc.ts`), used by both sides.
+  - `app.ts` holds the middleware (host and origin guard, security headers, sessions, body limits, in that order) and turns errors into JSON; `routes/` has the API, one file per area.
+  - Each store owns its tables (`notes.ts`, `images.ts`, `styles.ts`, `settings.ts`, `auth.ts` for sessions, `users.ts` for accounts) and is built once in `services.ts`. Moving or deleting an account (`users.ts`) asks each store to move or delete its own rows, in one transaction.
+- `shared/` holds what both sides check the same way: the types, the document validator (`doc.ts`), saved-style rules (`styleProps.ts`), image rules (`imageRules.ts`), safe CSS and link values (`safe.ts`) and tag rules (`tags.ts`).
   - `extensions.ts` is the single Tiptap extension list: the editor uses it, and the server checks documents against the schema it produces. When you add an extension, review its attributes in `doc.ts` and add its node and mark names to the lists there; a test fails until they match the schema.
   - `font-catalog.json` is a snapshot of the Google Fonts catalog. Refresh it with `npm run fonts:catalog`.
-- `server/images.ts` stores and cleans up images; `server/fonts.ts` is the Google Fonts proxy and cache.
+- `server/images.ts` stores and cleans up images; `server/fonts.ts` is the Google Fonts proxy and cache, and `server/fontCss.ts` checks what Google sends.
 - `web/src/` is a React + Vite app.
   - `components/` is UI only. `components/Editor.tsx` sets up Tiptap.
-  - `editor/` is editor logic with no React: style commands, what formatting the selection has (`formatInfo.ts`), font sizes, links, and pasting, dropping and uploading images (`imageInput.ts`).
-  - `notes/` keeps notes safe: `saveQueue.ts` is the autosave engine (debounced, one request per note at a time, retries, local drafts).
+  - `editor/` is editor logic with no React: style commands, what formatting the selection has (`formatInfo.ts`, which both the toolbar and the Format sidebar read), shared commands and shortcuts (`commands.ts`), font sizes, links, and pasting, dropping and uploading images (`imageInput.ts`).
+  - `notes/` keeps notes safe: `saveQueue.ts` is the autosave engine (debounced, one request per note at a time, retries), `drafts.ts` and `openNote.ts` handle local drafts, `noteList.ts` keeps the notes list in step with saves, and `useSession.ts` handles the session ending, signing in again and signing out.
   - `state/` holds the small app-wide stores: saved styles, fonts, the Format sidebar, notices, theme, session.
 - `e2e/` holds the browser checks: `npm run e2e` (or `e2e/run.sh <suite>`) starts a throwaway server on port 5557 for each suite. Never point them at real data.
 

@@ -39,7 +39,8 @@ let ip: string
 function build() {
   const paths = dataPaths(dataDir)
   const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
-  const fonts = createFontService({ dir: paths.fonts,
+  const fonts = createFontService({
+    dir: paths.fonts,
     catalog: [{ f: 'Lora', k: 'Serif', w: [400], i: [] }],
     fetchImpl: async () => {
       throw new Error('offline')
@@ -299,29 +300,65 @@ describe('host rule', () => {
 
 describe('auth API', () => {
   it('requires a session on every non-public API route', async () => {
-    const routes: Array<[string, string]> = [
-      ['GET', '/api/notes'],
-      ['POST', '/api/notes'],
-      ['GET', '/api/notes/00000000-0000-4000-8000-000000000000'],
-      ['PATCH', '/api/notes/00000000-0000-4000-8000-000000000000'],
-      ['DELETE', '/api/notes/00000000-0000-4000-8000-000000000000'],
-      ['POST', '/api/images/touch'],
-      ['GET', `/api/images/${'a'.repeat(64)}.png`],
-      ['GET', '/api/fonts/css?family=Lora'],
-      ['GET', '/api/fonts/preview?family=Lora'],
-      ['GET', '/api/fonts/file/lora/x.woff2'],
-      ['GET', '/api/fonts/favorites'],
-      ['PUT', '/api/fonts/favorites'],
-      ['GET', '/api/does-not-exist'],
-    ]
-    for (const [method, path] of routes) {
-      const response = await request(method, path, method === 'GET' || method === 'DELETE' ? {} : { body: {} })
+    // Every route the app registers under /api (a new route is covered without editing this test).
+    const PUBLIC = new Set(['GET /api/health', 'POST /api/auth/login', 'POST /api/auth/logout', 'GET /api/auth/me'])
+    const example: Record<string, string> = { id: '00000000-0000-4000-8000-000000000000', name: `${'a'.repeat(64)}.png`, slug: 'lora', file: 'x.woff2' }
+    const routes = [...new Set(app.routes.filter(route => route.method !== 'ALL' && route.path.startsWith('/api/')).map(route => `${route.method} ${route.path}`))]
+      .filter(key => !PUBLIC.has(key))
+      .map(key => key.replace(/:(\w+)/g, (_, param: string) => example[param] ?? 'x').split(' ') as [string, string])
+    expect(routes.length).toBeGreaterThan(15)
+    for (const [method, path] of [...routes, ['GET', '/api/does-not-exist'] as [string, string]]) {
+      const options = path === '/api/images' ? { raw: new Uint8Array([1]), headers: { 'content-type': 'image/png' } } : method === 'GET' || method === 'DELETE' ? {} : { body: {} }
+      const response = await request(method, path, options)
       expect(response.status, `${method} ${path}`).toBe(401)
       expect(response.headers.get('cache-control')).toBe('no-store')
     }
-    const upload = await request('POST', '/api/images', { raw: new Uint8Array([1]), headers: { 'content-type': 'image/png' } })
-    expect(upload.status).toBe(401)
     expect((await request('GET', '/api/health')).status).toBe(200)
+  })
+
+  it('answers errors in the shape each kind always had', async () => {
+    const alice = signedInUser(db, 'alice')
+    const keys = async (response: Response) => Object.keys((await response.json()) as object).sort()
+    // Fonts: { error } only. An unknown family, and Google out of reach (this test is offline).
+    const unknown = await request('GET', '/api/fonts/css?family=Nope', { cookie: alice.cookie })
+    expect(unknown.status).toBe(404)
+    expect(await keys(unknown)).toEqual(['error'])
+    const offline = await request('GET', '/api/fonts/css?family=Lora', { cookie: alice.cookie })
+    expect([502, 503]).toContain(offline.status)
+    expect(await keys(offline)).toEqual(['error'])
+    // Styles: { error, code }.
+    const style = (id: string) => ({ cookie: alice.cookie, body: { id, name: 'Callout', props: { bold: true } } })
+    expect((await request('POST', '/api/styles', style('11111111-1111-4111-8111-111111111111'))).status).toBe(201)
+    const taken = await request('POST', '/api/styles', style('22222222-2222-4222-8222-222222222222'))
+    expect(taken.status).toBe(409)
+    expect(await taken.json()).toEqual({ error: expect.any(String), code: 'name_taken' })
+    // Unknown API paths: JSON, never the app's HTML.
+    const missing = await request('GET', '/api/does-not-exist', { cookie: alice.cookie })
+    expect(missing.status).toBe(404)
+    expect(await missing.json()).toEqual({ error: 'Not found' })
+  })
+
+  it('answers a busy server with 503 and Retry-After, giving the attempt back', async () => {
+    await addUser('alice', 'correct horse battery')
+    const paths = dataPaths(dataDir)
+    app = createApp({
+      db,
+      hosts: { ports: ['5555'] },
+      images: createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash }),
+      fonts: createFontService({ dir: paths.fonts, catalog: [], prefetchLatin: false }),
+      clientIp: () => ip,
+      hashQueue: {
+        run: async () => {
+          throw new BusyError()
+        },
+        running: 0,
+        queued: 0,
+      },
+    })
+    const response = await login('alice', 'correct horse battery')
+    expect(response.status).toBe(503)
+    expect(response.headers.get('retry-after')).toBe('5')
+    expect(await response.json()).toEqual({ error: 'Margin is busy. Try again in a few seconds.', retryAfter: 5 })
   })
 
   it('signs in, sets a strict cookie, and signs out', async () => {
