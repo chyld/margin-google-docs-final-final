@@ -4,8 +4,11 @@ import type { DocJSON } from '../../../shared/types.ts'
 import { imageIdsIn } from '../../../shared/imageRules.ts'
 import { normalizeTags } from '../../../shared/tags.ts'
 
+/** An edit to a note: any of its title, content and tags. */
+export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
+
 /** Unsaved edits kept in localStorage until the server confirms them. */
-export type Draft = { title?: string; content?: DocJSON; tags?: string[] } & {
+export type Draft = SavePatch & {
   editedAt: number
   /** The note's server `updatedAt` this tab last saw when the draft was written. */
   baseUpdatedAt: number | null
@@ -13,7 +16,7 @@ export type Draft = { title?: string; content?: DocJSON; tags?: string[] } & {
 
 export type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
-export const DRAFT_PREFIX = 'margin:draft:'
+const DRAFT_PREFIX = 'margin:draft:'
 
 /** Drafts for one account: margin:draft:<userId>:<noteId>. */
 export function draftPrefixFor(userId: string): string {

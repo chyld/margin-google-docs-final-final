@@ -1,11 +1,12 @@
 // Autosave engine. Framework-free so it can be unit tested with fake timers.
 // One queue per app; entries are keyed by note id so remounting the editor never creates a second writer.
-import type { DocJSON, NoteSummary } from '../../../shared/types.ts'
+import type { NoteSummary } from '../../../shared/types.ts'
 import { isAuthFailure } from './authFailure.ts'
 import { parseDraft } from './drafts.ts'
-import type { Draft, DraftStorage } from './drafts.ts'
+import type { Draft, DraftStorage, SavePatch } from './drafts.ts'
 
-export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
+export type { SavePatch }
+
 
 /**
  * pending: edited, waiting for the debounce. retrying: transient failure. error: permanent failure.
@@ -32,6 +33,7 @@ export type SaveQueueOptions = {
 // Browsers cap keepalive request bodies at 64 KiB in total; stay safely below it.
 export const KEEPALIVE_LIMIT_BYTES = 60_000
 export const PAUSED_MESSAGE = 'Signed out. Sign in to keep saving'
+
 // Drafts stringify the whole document, so batch rapid keystrokes.
 export const DRAFT_DELAY_MS = 300
 

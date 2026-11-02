@@ -120,3 +120,33 @@ describe('moving an account to another', () => {
     }
   })
 })
+
+/** Accounts with little to move: only favorites, or none at all. */
+function sparseFixture(): DatabaseSync {
+  const db = openDatabase(':memory:')
+  const run = (sql: string, ...params: Array<string | number | null>) => db.prepare(sql).run(...params)
+  for (const [id, name] of [[ALICE, 'alice'], [BOB, 'bob'], ['cccccccc-cccc-4ccc-8ccc-cccccccccccc', 'carol']]) {
+    run('INSERT INTO users (id, username, password_hash, created_at, password_changed_at) VALUES (?, ?, ?, 1, 1)', id as string, name as string, `hash-${name}`)
+  }
+  run("INSERT INTO user_settings (user_id, key, value) VALUES (?, 'fontFavorites', ?)", ALICE, JSON.stringify(['Lora', 'Unknown Family']))
+  run("INSERT INTO notes (id, title, content, text, created_at, updated_at, user_id) VALUES ('n-c', 'Carol', '{}', '', 5, 6, 'cccccccc-cccc-4ccc-8ccc-cccccccccccc')")
+  return db
+}
+
+describe('moving an account with little to move', () => {
+  it('favorites reach a target that had none; a source without favorites leaves the target alone', () => {
+    const db = sparseFixture()
+    const users = createUserStore(db, () => 1000)
+    expect(users.owned('alice')).toEqual({ notes: 0, images: 0, favorites: 2, styles: 0 })
+    expect(() => users.delete('alice')).toThrowErrorMatchingSnapshot()
+    const fromAlice = users.reassign('alice', 'bob')
+    const fromCarol = users.reassign('carol', 'bob')
+    expect({ fromAlice, fromCarol, rows: dump(db) }).toMatchSnapshot()
+  })
+
+  it('deleting an account that owns only favorites, with --transfer-to', () => {
+    const db = sparseFixture()
+    const result = createUserStore(db, () => 1000).delete('alice', { transferTo: 'carol' })
+    expect({ result, rows: dump(db) }).toMatchSnapshot()
+  })
+})

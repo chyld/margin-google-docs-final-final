@@ -6,6 +6,7 @@ import { transaction } from './db.ts'
 import { imageOwnership } from './images.ts'
 import { noteOwnership } from './notes.ts'
 import { createSettingsStore } from './settings.ts'
+import type { SettingsStore } from './settings.ts'
 import { styleOwnership } from './styles.ts'
 
 export type UserRow = {
@@ -25,7 +26,7 @@ export class UserError extends Error {
   }
 }
 
-export function createUserStore(db: DatabaseSync, now: () => number = Date.now) {
+export function createUserStore(db: DatabaseSync, now: () => number = Date.now, settings: SettingsStore = createSettingsStore(db)) {
   const sql = {
     byName: db.prepare('SELECT * FROM users WHERE username = ?'),
     byId: db.prepare('SELECT * FROM users WHERE id = ?'),
@@ -69,7 +70,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
   const notes = noteOwnership(db)
   const images = imageOwnership(db)
   const styles = styleOwnership(db)
-  const settings = createSettingsStore(db)
 
   /** Moves everything one account owns to another. Inside a transaction. */
   function transferOwnedData(fromId: string, toId: string): { notes: number; images: number; styles: number } {

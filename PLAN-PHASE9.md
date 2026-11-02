@@ -520,3 +520,12 @@ Everything else must be identical. The browser suites, the characterization test
   - It requires a zero exit status as well as a passing summary.
 - **Listed in §9 instead of changed back:** a checked item's style strikethrough, inline code's font, mixed paragraph types, the sidebar showing pasted colors, and draft image references.
 - **Cleanups:** "Phase N" in test names, `CONTENT_TYPES` derived from `IMAGE_TYPES`, double blank lines.
+
+**After the step 3–4 code review** (Sonnet, Codex Sol, Codex Terra, Muse, DeepSeek; Grok and GLM still running at this point). No reviewer found a behavior difference. Sonnet and Muse each drove the old and new server side by side and got identical statuses, headers and bodies. Optional items that were done:
+- **Transfer tests:** a second fixture recorded against the step 0 code. It covers an account owning only favorites (the refusal message and `owned()`), favorites reaching a target that had no row, and a source without favorites leaving the target's list alone.
+- **One settings store:** `services.ts` passes its `settings` store to `createUserStore`, so account transfer and the favorites routes share one instance.
+- **Queue and list created together:** the save queue and the notes list are created in one `useState` initializer, with no ref written during render. `useNoteList` is gone: App reads the store with `useSyncExternalStore`, so `noteList.ts` has no React import.
+- **`useSession`:** `isSessionEnded` is declared beside its ref instead of inside the returned object.
+- **Drafts:** `SavePatch` is defined in `drafts.ts`, and `Draft` extends it again.
+- **`core.mjs`:** the save-mid-request check also verifies that the full list arrived (64 core checks).
+- **Not done:** `restoreForOpen` takes no `now` option. Nothing reads the clock; the confirm text uses the draft's own time, as before.

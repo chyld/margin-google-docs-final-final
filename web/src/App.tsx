@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Menu, Plus } from 'lucide-react'
 import { LIST_LIMIT } from '../../shared/constants.ts'
 import { parseTagQuery, toggleTagInQuery } from '../../shared/tags.ts'
@@ -11,7 +11,7 @@ import { NoteView } from './components/NoteView.tsx'
 import { Sidebar } from './components/Sidebar.tsx'
 import { UserMenu } from './components/UserMenu.tsx'
 import { browserStorage, draftPrefixFor, touchDraftImages } from './notes/drafts.ts'
-import { createNoteList, useNoteList } from './notes/noteList.ts'
+import { createNoteList } from './notes/noteList.ts'
 import type { NoteList } from './notes/noteList.ts'
 import { createSaveQueue } from './notes/saveQueue.ts'
 import { useSession } from './notes/useSession.ts'
@@ -43,22 +43,22 @@ export function App({ me }: { me: Me }) {
   const draftPrefix = draftPrefixFor(user.id)
 
   // One save queue and one notes list per signed-in page. A confirmed save updates the list.
-  const listRef = useRef<NoteList | null>(null)
-  const [queue] = useState(() =>
-    createSaveQueue({
+  const [{ queue, list }] = useState(() => {
+    let created: NoteList | null = null
+    const saveQueue = createSaveQueue({
       send: api.updateNote,
       storage: browserStorage(),
       draftPrefix,
-      onSaved: summary => listRef.current?.noteSaved(summary),
-    }),
-  )
-  const [list] = useState(() => createNoteList({ api: { listNotes: query => api.listNotes(query), listTags: () => api.listTags() }, queue }))
-  listRef.current = list
+      onSaved: summary => created?.noteSaved(summary),
+    })
+    created = createNoteList({ api: { listNotes: search => api.listNotes(search), listTags: () => api.listTags() }, queue: saveQueue })
+    return { queue: saveQueue, list: created }
+  })
   useEffect(() => {
     list.start()
     return () => list.dispose()
   }, [list])
-  const { notes, recent, listState, query, tagCounts } = useNoteList(list)
+  const { notes, recent, listState, query, tagCounts } = useSyncExternalStore(list.subscribe, list.getSnapshot)
 
   const session = useSession({ queue, user, onResumed: () => list.refresh() })
   const { sessionEnded, isSessionEnded } = session

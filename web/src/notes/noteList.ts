@@ -1,6 +1,6 @@
 // The notes list, the recent-notes rail and the tag counts, kept in step with saves, searches,
-// creates and deletes. Framework-free (one store per signed-in page, see useNoteList), so the
-// ordering rules below are unit tested with fake timers.
+// creates and deletes. Framework-free (one store per signed-in page; App reads it with
+// useSyncExternalStore), so the ordering rules below are unit tested with fake timers.
 //
 // The rules that keep it right:
 // - Only the newest list (and tag-count) request may apply: older answers can arrive late. Changing
@@ -9,7 +9,6 @@
 // - A save landing while a search is active, or while a list request is in flight, asks the server
 //   again instead of patching (the note may enter or leave the results; patching would discard the
 //   pending answer). Otherwise the row is patched in place, moving to the top only for a newer edit.
-import { useSyncExternalStore } from 'react'
 import type { NoteSummary, TagCount } from '../../../shared/types.ts'
 import type { SaveQueue } from './saveQueue.ts'
 
@@ -230,7 +229,3 @@ export function createNoteList({ api, queue }: { api: NoteListApi; queue: Pick<S
 }
 
 export type NoteList = ReturnType<typeof createNoteList>
-
-export function useNoteList(list: NoteList): NoteListSnapshot {
-  return useSyncExternalStore(list.subscribe, list.getSnapshot)
-}

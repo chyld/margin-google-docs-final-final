@@ -464,7 +464,10 @@ try {
   await page3.waitForTimeout(4000)
   await page3.unroute(slowList)
   const rowTitle = await page3.locator(`a[href="/notes/${doomedId}"] .note-item-title`).textContent()
+  const rowIds = await page3.locator('.note-item').evaluateAll(items => items.map(item => item.getAttribute('href')))
+  const serverIds = (await api('/api/notes')).map(note => `/notes/${note.id}`)
   check('a save landing mid-request is not lost from the list', rowTitle === 'Saved mid-request', `row=${rowTitle}`)
+  check('…and the full list arrives with it', rowIds.length === serverIds.length && serverIds.every(id => rowIds.includes(id)), `shown=${rowIds.length} all=${serverIds.length}`)
 
   // Screenshot of the formatted note for the user.
   await page3.goto(`${BASE}/notes/${noteA}`)

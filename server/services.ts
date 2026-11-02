@@ -9,12 +9,13 @@ import { createStyleStore } from './styles.ts'
 import { createUserStore } from './users.ts'
 
 export function createServices(db: DatabaseSync) {
+  const settings = createSettingsStore(db)
   return {
     notes: createNoteStore(db),
     sessions: createSessionStore(db),
-    users: createUserStore(db),
+    users: createUserStore(db, Date.now, settings),
     styles: createStyleStore(db),
-    settings: createSettingsStore(db),
+    settings,
   }
 }
 

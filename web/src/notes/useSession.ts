@@ -59,6 +59,8 @@ export function useSession({ queue, user, onResumed }: SessionOptions) {
   useEffect(() => {
     sessionEndedRef.current = sessionEnded
   }, [sessionEnded])
+  /** For listeners that mustn't re-subscribe on every change (keyboard shortcuts). */
+  const isSessionEnded = useCallback(() => sessionEndedRef.current !== null, [])
 
   // Bumped on every sign-in, so an older account check answering late can't undo it.
   const authGeneration = useRef(0)
@@ -260,8 +262,7 @@ export function useSession({ queue, user, onResumed }: SessionOptions) {
 
   return {
     sessionEnded,
-    /** For listeners that mustn't re-subscribe on every change (keyboard shortcuts). */
-    isSessionEnded: useCallback(() => sessionEndedRef.current !== null, []),
+    isSessionEnded,
     reauthEpoch,
     locked,
     signingOut,

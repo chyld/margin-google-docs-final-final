@@ -497,3 +497,119 @@ exports[`moving an account to another > reports what an account owns (the refusa
 `;
 
 exports[`moving an account to another > reports what an account owns (the refusal message uses these) 2`] = `[Error: "alice" owns 2 note(s), 2 image(s), 3 style(s) and 4 favorite font(s). Use --transfer-to <user> or --purge]`;
+
+exports[`moving an account with little to move > deleting an account that owns only favorites, with --transfer-to 1`] = `
+{
+  "result": {
+    "images": 0,
+    "notes": 0,
+    "styles": 0,
+  },
+  "rows": {
+    "image_owners": [],
+    "images": [],
+    "note_tags": [],
+    "notes": [
+      {
+        "content": "{}",
+        "created_at": 5,
+        "id": "n-c",
+        "text": "",
+        "title": "Carol",
+        "updated_at": 6,
+        "user_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+      },
+    ],
+    "sessions": [],
+    "styles": [],
+    "user_settings": [
+      {
+        "key": "fontFavorites",
+        "user_id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "value": "["Lora","Unknown Family"]",
+      },
+    ],
+    "users": [
+      {
+        "created_at": 1,
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "password_changed_at": 1,
+        "password_hash": "hash-bob",
+        "username": "bob",
+      },
+      {
+        "created_at": 1,
+        "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "password_changed_at": 1,
+        "password_hash": "hash-carol",
+        "username": "carol",
+      },
+    ],
+  },
+}
+`;
+
+exports[`moving an account with little to move > favorites reach a target that had none; a source without favorites leaves the target alone 1`] = `[Error: "alice" owns 0 note(s), 0 image(s), 0 style(s) and 2 favorite font(s). Use --transfer-to <user> or --purge]`;
+
+exports[`moving an account with little to move > favorites reach a target that had none; a source without favorites leaves the target alone 2`] = `
+{
+  "fromAlice": {
+    "images": 0,
+    "notes": 0,
+    "styles": 0,
+  },
+  "fromCarol": {
+    "images": 0,
+    "notes": 1,
+    "styles": 0,
+  },
+  "rows": {
+    "image_owners": [],
+    "images": [],
+    "note_tags": [],
+    "notes": [
+      {
+        "content": "{}",
+        "created_at": 5,
+        "id": "n-c",
+        "text": "",
+        "title": "Carol",
+        "updated_at": 6,
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "sessions": [],
+    "styles": [],
+    "user_settings": [
+      {
+        "key": "fontFavorites",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "["Lora","Unknown Family"]",
+      },
+    ],
+    "users": [
+      {
+        "created_at": 1,
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "password_changed_at": 1,
+        "password_hash": "hash-alice",
+        "username": "alice",
+      },
+      {
+        "created_at": 1,
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "password_changed_at": 1,
+        "password_hash": "hash-bob",
+        "username": "bob",
+      },
+      {
+        "created_at": 1,
+        "id": "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        "password_changed_at": 1,
+        "password_hash": "hash-carol",
+        "username": "carol",
+      },
+    ],
+  },
+}
+`;
