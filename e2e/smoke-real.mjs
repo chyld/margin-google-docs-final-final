@@ -1,5 +1,5 @@
 // Read-only check of the real instance (after a deploy): signs in, opens every note, never types in a
-// document, then signs this session out. Usage: PW=<password> node e2e/smoke-real.mjs
+// document, then signs this session out. Usage: MARGIN_REAL_USER=<name> PW=<password> node e2e/smoke-real.mjs
 import { tmpdir } from 'node:os'
 import { chromium } from 'playwright-core'
 import { signIn } from './login.mjs'
@@ -7,7 +7,11 @@ const BASE = process.env.MARGIN_REAL_URL ?? 'http://localhost:5555'
 const SHOTS = process.env.MARGIN_SHOTS ?? `${tmpdir()}/margin-shots`
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM ?? '/usr/bin/chromium', headless: true })
 const context = await browser.newContext({ viewport: { width: 1400, height: 950 } })
-await signIn(BASE, context, 'chyld', process.env.PW)
+if (!process.env.MARGIN_REAL_USER || !process.env.PW) {
+  console.error('Set MARGIN_REAL_USER and PW to an account on the real instance.')
+  process.exit(2)
+}
+await signIn(BASE, context, process.env.MARGIN_REAL_USER, process.env.PW)
 const page = await context.newPage()
 await page.setViewportSize({ width: 1400, height: 950 })
 const errors = []
