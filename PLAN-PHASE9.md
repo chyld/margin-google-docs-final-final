@@ -1,6 +1,6 @@
 # Phase 9: simpler design, modular code
 
-Status: **v2**, revised after the plan review by Sonnet, Codex Sol, Codex Terra, Grok, Muse, DeepSeek and GLM. Six approved with changes. DeepSeek asked to rework §4.1 and the hand-off contracts, which v2 does. Their findings are summarized in §11.
+Status: **deployed 2026-11-01** (v2, revised after the plan review by Sonnet, Codex Sol, Codex Terra, Grok, Muse, DeepSeek and GLM. Six approved with changes. DeepSeek asked to rework §4.1 and the hand-off contracts, which v2 does.) Their findings are summarized in §11.
 
 Baseline: commit `10e17c3` on branch `phase9` is the deployed Phase 8 code (local only, never pushed).
 
@@ -529,3 +529,10 @@ Everything else must be identical. The browser suites, the characterization test
 - **Drafts:** `SavePatch` is defined in `drafts.ts`, and `Draft` extends it again.
 - **`core.mjs`:** the save-mid-request check also verifies that the full list arrived (64 core checks).
 - **Not done:** `restoreForOpen` takes no `now` option. Nothing reads the clock; the confirm text uses the draft's own time, as before.
+
+**Deployed 2026-11-01:**
+- The note fingerprint was identical before and after (`~/margin-deploy/fp.cjs`).
+- The read-only smoke check opened all 15 notes, with every image loaded, no errors and no writes.
+- The user's two sessions were kept.
+- Backup: `~/margin-backups/margin-data-20261101-194226-pre-phase9.tar.gz` (integrity checked). Rollback image: `margin:phase8`.
+- Tests at deploy: 712 unit tests, and 276 browser checks across `npm run e2e`.
