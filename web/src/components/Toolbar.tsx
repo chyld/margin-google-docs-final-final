@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import type { ChainedCommands } from '@tiptap/core'
@@ -33,23 +33,20 @@ import {
   Undo2,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { HEADING_LEVELS } from '../../../shared/extensions.ts'
-import { firstFontFamily } from '../../../shared/fonts.ts'
-import type { ImageAlign } from '../../../shared/image.ts'
 import type { StyleAlign } from '../../../shared/styleProps.ts'
-import { currentFontSize } from '../editor/fontSize.ts'
 import { IMAGE_ACCEPT, uploadImages } from '../editor/imageInput.ts'
 import { BLOCK_OPTIONS } from '../editor/labels.ts'
 import { FontPicker } from './FontPicker.tsx'
 import { FontSize } from './FontSize.tsx'
 import { LinkPopover } from './LinkPopover.tsx'
-import { clearInlineFormatting, currentStyle, effectiveTextProps } from '../editor/styleCommands.ts'
-import type { CurrentStyle } from '../editor/styleCommands.ts'
-import { styleById } from '../state/namedStyles.ts'
+import { clearFormatting } from '../editor/commands.ts'
+import { useNamedStyles } from '../state/namedStyles.ts'
+import { selectState } from '../editor/toolbarState.ts'
+import type { ToolbarState } from '../editor/toolbarState.ts'
+import { stylesStatus } from '../editor/styleIndex.ts'
 import { StylesMenu } from './StylesMenu.tsx'
 import { TableGrid, TableOptions } from './TableMenu.tsx'
 import { Group, MenuItem, MOD, Separator, ToolButton, ToolMenuButton, useDismiss } from './ToolbarParts.tsx'
-import { useFormatPanel } from '../state/formatPanel.ts'
 
 type Swatch = { name: string; value: string }
 
@@ -85,116 +82,7 @@ const HIGHLIGHT_COLORS: Swatch[] = [
   { name: 'Brown', value: '#e6d5cc' },
 ]
 
-type Block = 'paragraph' | `h${(typeof HEADING_LEVELS)[number]}` | 'other'
 type Align = StyleAlign
-
-type ToolbarState = {
-  editable: boolean
-  canUndo: boolean
-  canRedo: boolean
-  block: Block
-  bold: boolean
-  italic: boolean
-  underline: boolean
-  strike: boolean
-  code: boolean
-  canCode: boolean
-  color: string | null
-  highlight: string | null
-  link: boolean
-  align: Align
-  bulletList: boolean
-  orderedList: boolean
-  taskList: boolean
-  blockquote: boolean
-  codeBlock: boolean
-  canMarks: boolean
-  canBulletList: boolean
-  canOrderedList: boolean
-  canTaskList: boolean
-  canBlockquote: boolean
-  canCodeBlock: boolean
-  canHorizontalRule: boolean
-  canAlign: boolean
-  fontFamily: string | null
-  fontSize: number | null
-  imageSelected: boolean
-  imageAlign: ImageAlign
-  inTable: boolean
-  canInsertTable: boolean
-  details: boolean
-  canDetails: boolean
-  style: CurrentStyle
-}
-
-/** A linked paragraph shows the type its style gives it (it may differ from the node, e.g. in lists). */
-function linkedBlock(editor: Editor): Block | null {
-  const id = editor.state.selection.$from.parent.attrs.styleId as string | null | undefined
-  const block = id ? styleById(id)?.props.block : undefined
-  return block ? (block as Block) : null
-}
-
-function currentBlock(editor: Editor): Block {
-  for (const level of HEADING_LEVELS) {
-    if (editor.isActive('heading', { level })) return `h${level}`
-  }
-  return editor.isActive('paragraph') ? 'paragraph' : 'other'
-}
-
-// Runs after every transaction; editor.can() must be called here so disabled states stay current.
-export function selectState({ editor }: { editor: Editor | null }): ToolbarState | null {
-  if (!editor) return null
-  const can = editor.can()
-  const highlight = editor.isActive('highlight') ? (editor.getAttributes('highlight').color as string | undefined) : undefined
-  const imageSelected = editor.isActive('image')
-  const details = editor.isActive('details')
-  const styleText = effectiveTextProps(editor.state, id => styleById(id)?.props)
-  return {
-    editable: editor.isEditable,
-    canUndo: can.undo(),
-    canRedo: can.redo(),
-    block: linkedBlock(editor) ?? currentBlock(editor),
-    // What the text really has: direct formatting, or the parts its style gives it.
-    bold: editor.isActive('bold') || Boolean(styleText?.bold),
-    italic: editor.isActive('italic') || Boolean(styleText?.italic),
-    underline: editor.isActive('underline') || Boolean(styleText?.underline),
-    strike: editor.isActive('strike') || Boolean(styleText?.strike),
-    code: editor.isActive('code'),
-    canCode: can.toggleCode(),
-    color: (editor.getAttributes('textStyle').color as string | undefined) ?? styleText?.color ?? null,
-    highlight: highlight ?? styleText?.highlight ?? null,
-    link: editor.isActive('link'),
-    // The paragraph's own alignment, else the one its style gives it.
-    align:
-      (['center', 'right', 'justify'] as const).find(align => editor.isActive({ textAlign: align })) ??
-      ((editor.state.selection.$from.parent.attrs.textAlign as Align | null) ? 'left' : null) ??
-      (styleById(editor.state.selection.$from.parent.attrs.styleId as string | undefined)?.props.align as Align | undefined) ??
-      'left',
-    bulletList: editor.isActive('bulletList'),
-    orderedList: editor.isActive('orderedList'),
-    taskList: editor.isActive('taskList'),
-    blockquote: editor.isActive('blockquote'),
-    codeBlock: editor.isActive('codeBlock'),
-    canMarks: can.toggleBold(),
-    canBulletList: can.toggleBulletList(),
-    canOrderedList: can.toggleOrderedList(),
-    canTaskList: can.toggleTaskList(),
-    canBlockquote: can.toggleBlockquote(),
-    canCodeBlock: can.toggleCodeBlock(),
-    canHorizontalRule: can.setHorizontalRule(),
-    canAlign: can.setTextAlign('left'),
-    // Direct formatting first, then the font the text's style supplies.
-    fontFamily: firstFontFamily(editor.getAttributes('textStyle').fontFamily) ?? firstFontFamily(styleText?.fontFamily),
-    fontSize: currentFontSize(editor),
-    imageSelected,
-    imageAlign: imageSelected ? ((editor.getAttributes('image').align as ImageAlign | null) ?? 'left') : 'left',
-    inTable: editor.isActive('table'),
-    canInsertTable: can.insertTable({ rows: 1, cols: 1 }),
-    details,
-    canDetails: details ? can.unsetDetails() : can.setDetails(),
-    style: currentStyle(editor.state),
-  }
-}
 
 type ColorMenuProps = {
   label: string
@@ -270,12 +158,18 @@ type ToolbarProps = {
   readOnly: boolean
   linkOpen: boolean
   onLinkOpenChange: (open: boolean) => void
+  /** Changes when the Format sidebar asks for the Styles menu to open. */
+  stylesMenuRequest: number
 }
 
-export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange }: ToolbarProps) {
-  const state = useEditorState({ editor, selector: selectState })
+export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange, stylesMenuRequest }: ToolbarProps) {
+  // Saved styles changing (or loading) changes what styled text looks like, without a transaction:
+  // a new selector makes the toolbar read the selection again.
+  const snapshot = useNamedStyles()
+  const status = stylesStatus(snapshot)
+  const selector = useCallback(({ editor: current }: { editor: Editor | null }) => selectState(current, snapshot.styles, status), [snapshot.styles, status])
+  const state = useEditorState({ editor, selector })
   const linkRef = useDismiss(linkOpen, () => onLinkOpenChange(false))
-  const { stylesRequest } = useFormatPanel()
 
   if (!editor || !state) return <div className="toolbar" role="toolbar" aria-label="Formatting" />
 
@@ -301,11 +195,12 @@ export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange }: Toolba
       styled(c => c.setTextAlign(value))
     }
   }
-  const alignState: Align = state.imageSelected ? state.imageAlign : state.align
+  // Paragraphs aligned differently: the menu shows the left icon with nothing checked.
+  const alignState: Align | null = state.imageSelected ? state.imageAlign : state.align
   const alignDisabled = off || (state.imageSelected ? false : !state.canAlign)
   // Synchronous: the next keystroke must land in the document, not on a closing menu.
   const focusEditor = () => editor.view.focus()
-  const AlignIcon = ALIGN_ICONS[alignState]
+  const AlignIcon = ALIGN_ICONS[alignState ?? 'left']
   const ListIcon = state.orderedList ? ListOrdered : state.taskList ? ListTodo : List
 
   return (
@@ -316,7 +211,7 @@ export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange }: Toolba
       </Group>
       <Separator />
 
-      <StylesMenu editor={editor} current={state.style} disabled={off} openRequest={stylesRequest} />
+      <StylesMenu editor={editor} current={state.style} disabled={off} openRequest={stylesMenuRequest} />
       <Separator />
 
       <select
@@ -458,22 +353,6 @@ export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange }: Toolba
 const ALIGN_ICONS = { left: AlignLeft, center: AlignCenter, right: AlignRight, justify: AlignJustify } as const
 const ALIGN_LABELS = { left: 'Align left', center: 'Align center', right: 'Align right', justify: 'Justify' } as const
 const ALIGN_KEYS = { left: 'L', center: 'E', right: 'R', justify: 'J' } as const
-
-/** Clears marks, style links and block types (Ctrl/⌘+\\ too). Works with a collapsed cursor. */
-export function clearFormatting(editor: Editor, { focus = true } = {}): void {
-  // Ends the style too (nothing to keep: everything is being cleared).
-  runWithEndStyle(
-    editor,
-    c =>
-      c
-        .command(({ tr }) => {
-          clearInlineFormatting(tr)
-          return true
-        })
-        .clearNodes(),
-    { materialize: false, focus },
-  )
-}
 
 function InsertMenu({ editor, state, disabled }: { editor: Editor; state: ToolbarState; disabled: boolean }) {
   const [panel, setPanel] = useState<'menu' | 'table'>('menu')

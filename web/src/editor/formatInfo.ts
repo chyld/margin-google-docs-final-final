@@ -4,7 +4,8 @@ import type { Mark, Node as PMNode } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'
 import type { EditorState } from '@tiptap/pm/state'
 import { DEFAULT_FONT, firstFontFamily } from '../../../shared/fonts.ts'
-import { BLOCK_TYPOGRAPHY, canonicalColor, FLAG_MARKS } from '../../../shared/styleProps.ts'
+import { isSafeColor } from '../../../shared/safe.ts'
+import { BLOCK_TYPOGRAPHY, canonicalColor, ELEMENT_COLORS, FLAG_MARKS } from '../../../shared/styleProps.ts'
 import type { NamedStyle, StyleAlign, StyleBlock, StyleProps } from '../../../shared/styleProps.ts'
 import { styleIndex } from './styleIndex.ts'
 import type { StylesStatus } from './styleIndex.ts'
@@ -54,6 +55,12 @@ export type FormatInfo = {
   codeBlock: boolean
   /** A collapsed cursor: the values are what the next typed character gets. */
   typingHere: boolean
+  /**
+   * Per text field: every part of the selection got its value from a mark or a saved style (not from
+   * the page, an element or a missing style). The toolbar shows only these values: Bold lights up for
+   * two differently bold styles, but not for a bold word next to a table header's default bold.
+   */
+  explicit: Record<'fontFamily' | 'bold' | 'italic' | 'underline' | 'strike' | 'color' | 'highlight', boolean>
   text: {
     fontFamily: Field<string>
     /** In points; null with source 'direct' when the size isn't in pt/px. */
@@ -89,12 +96,9 @@ const NODE_LABELS: Record<string, string> = {
   blockquote: 'Quote',
 }
 
-// How the page draws some elements (web/src/styles/editor.css), as defaults with a named source.
-const LINK_COLOR = '#1a73e8'
-const QUOTE_COLOR = '#5f6368'
-const CHECKED_COLOR = '#5f6368'
-/** A highlight mark without a color (.document mark). */
-const HIGHLIGHT_DEFAULT = '#fff475'
+// How the page draws some elements (shared/styleProps.ts ELEMENT_COLORS, tested against editor.css).
+const { link: LINK_COLOR, quote: QUOTE_COLOR, checked: CHECKED_COLOR, highlight: HIGHLIGHT_DEFAULT } = ELEMENT_COLORS
+/** How the Format sidebar names inline code's font (the page uses a monospace font stack). */
 const CODE_FONT = 'Monospace'
 
 /** "11pt" / "12px" → points (rounded to 0.5), else null. Shared with the toolbar's size box. */
@@ -135,10 +139,12 @@ class Fold<T> {
   private first: Sourced<T> | null = null
   private sameValue = true
   private sameSource = true
+  private allExplicit = true
   done = false
 
   add(item: Sourced<T>): void {
     if (this.done) return
+    if (item.source !== 'direct' && item.source !== 'style') this.allExplicit = false
     if (!this.first) {
       this.first = item
       return
@@ -151,6 +157,11 @@ class Fold<T> {
       return
     }
     if (item.source !== this.first.source || item.styleId !== this.first.styleId || item.label !== this.first.label) this.sameSource = false
+  }
+
+  /** Every value so far came from a mark or a saved style. */
+  get explicit(): boolean {
+    return this.first !== null && this.allExplicit
   }
 
   result(): Field<T> {
@@ -319,7 +330,9 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
 
     text.code.add({ value: isCode, source: isCode ? 'direct' : 'default' })
 
-    const color = canonicalColor(attr('textStyle', 'color'))
+    // Pasted text may keep colors canonicalColor can't rewrite as hex (red, oklch(…)): shown as is.
+    const rawColor = attr('textStyle', 'color')
+    const color = canonicalColor(rawColor) ?? (isSafeColor(rawColor) ? rawColor.trim() : null)
     // A style's color beats the link blue (.document span[data-style] a); a quote's grey only
     // reaches normal text and headings 1–2 (smaller headings keep their own color).
     const quoteColors = !piece.linkedBlock && (piece.block === 'paragraph' || piece.block === 'h1' || piece.block === 'h2' || piece.block === 'other')
@@ -459,6 +472,15 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
     node: selection instanceof NodeSelection && !imageNode && !selection.node.isTextblock ? (NODE_LABELS[selection.node.type.name] ?? 'Block') : null,
     codeBlock: blockCount > 0 && codeBlocks === blockCount,
     typingHere: empty,
+    explicit: {
+      fontFamily: text.fontFamily.explicit,
+      bold: text.bold.explicit,
+      italic: text.italic.explicit,
+      underline: text.underline.explicit,
+      strike: text.strike.explicit,
+      color: text.color.explicit,
+      highlight: text.highlight.explicit,
+    },
     text: {
       fontFamily: text.fontFamily.result(),
       fontSize: text.fontSize.result(),

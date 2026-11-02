@@ -8,7 +8,7 @@ import type { Root } from 'react-dom/client'
 import { Editor } from '@tiptap/core'
 import { extensions } from '../../../shared/extensions.ts'
 import { FormatPanel } from './FormatPanel.tsx'
-import { getFormatPanel, resetFormatPanelForTesting } from '../state/formatPanel.ts'
+import { resetFormatPanelForTesting } from '../state/formatPanel.ts'
 import { setStylesForTesting } from '../state/namedStyles.ts'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -18,6 +18,7 @@ let root: Root | null = null
 let container: HTMLDivElement
 let editor: Editor
 let closed: Array<{ restoreFocus?: boolean } | undefined>
+let stylesOpened: number
 
 beforeEach(() => {
   resetFormatPanelForTesting()
@@ -31,6 +32,7 @@ beforeEach(() => {
   })
   editor.commands.setTextSelection(3)
   closed = []
+  stylesOpened = 0
 })
 
 afterEach(async () => {
@@ -45,7 +47,7 @@ async function mount(mode: 'docked' | 'overlay' | 'sheet', off = false) {
   document.body.append(container)
   root = createRoot(container)
   await act(async () =>
-    root!.render(createElement(FormatPanel, { editor: editor as never, mode, off, readOnlyNote: off, onClose: options => closed.push(options) })),
+    root!.render(createElement(FormatPanel, { editor: editor as never, mode, off, readOnlyNote: off, onClose: options => closed.push(options), onOpenStyles: () => (stylesOpened += 1) })),
   )
 }
 
@@ -59,9 +61,8 @@ describe('FormatPanel', () => {
     await mount('docked')
     const name = container.querySelector<HTMLButtonElement>('.format-style-name.is-button')!
     expect(name.textContent).toBe('Callout')
-    const before = getFormatPanel().stylesRequest
     await act(async () => name.click())
-    expect(getFormatPanel().stylesRequest).toBe(before + 1)
+    expect(stylesOpened).toBe(1)
   })
 
   it('read-only: the style name is plain text, Clear formatting is off, the tag shows', async () => {

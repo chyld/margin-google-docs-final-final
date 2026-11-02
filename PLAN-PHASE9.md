@@ -427,6 +427,7 @@ The favorites half of `state/fonts.ts` (load, refresh, toggle, the write queue, 
 5. **Right after "Clear formatting" at the cursor:** the font, size and color boxes show what you'll type next, instead of the old text's values. Today they're stale, while Bold and Italic are already right.
 6. **A styled link whose style underlines:** Underline shows off, like every link, because the link supplies the underline.
 7. **Rare ranges:** a selection crossing a code block, or covering only empty styled lines, follows the panel's reading.
+8. **Colors written as `rgb(…)`** show as their hex value (`#188038`). Named colors (`red`) still show as written.
 
 Everything else must be identical. The browser suites, the characterization tests and the unit tests are the proof.
 
@@ -493,3 +494,11 @@ Everything else must be identical. The browser suites, the characterization test
 
 **Files**
 - `smoke-real3.mjs`, `make-fixtures.mjs`, the `run.sh` rewrite, removing `e2e/node_modules`, and merging into the existing `shared/doc.test.ts` (Muse, DeepSeek, GLM).
+
+## 12. Implementation notes (where the code differs from v2)
+
+- **`shared/phase2.test.ts`** became `shared/docRoundTrip.test.ts`, `shared/fonts.test.ts` and `shared/image.test.ts`. The document parts weren't merged into `doc.test.ts` because the two files' helpers clash (`paragraph()` has different signatures). `web/src/phase2.test.ts` became `editor/imageInput.test.ts`, `editor/fontSize.test.ts` and `state/fonts.test.ts`.
+- **The typography test** is `scripts/typography.test.ts`, next to the theme test, because it reads `editor.css` with Node's `fs`, which the web TypeScript config doesn't include. A one-value mutation of `editor.css` makes it fail.
+- **The focus trap** has one option, `recaptureOutside` (the sign-in dialog). The Format sheet now uses the standard selector and visibility filter. It has no inputs or links, and the sheet is always visible, so nothing changes.
+- **`toolbarState.test.ts`**: eight cases changed when the toolbar moved onto `formatInfo`. Each is marked "Changed" in the test, and each is one of §9 items 3–8.
+- **Element colors** are `ELEMENT_COLORS` in `shared/styleProps.ts`.

@@ -10,9 +10,8 @@ import { formatInfoFor } from '../editor/formatInfo.ts'
 import type { Field, FormatInfo, StyleRef } from '../editor/formatInfo.ts'
 import { stylesStatus } from '../editor/styleIndex.ts'
 import type { PanelMode } from '../state/formatPanel.ts'
-import { requestStylesMenu } from '../state/formatPanel.ts'
 import { styleById, useNamedStyles } from '../state/namedStyles.ts'
-import { clearFormatting } from './Toolbar.tsx'
+import { clearFormatting } from '../editor/commands.ts'
 import { ALIGN_NAMES, blockLabel } from '../editor/labels.ts'
 import { trapTab } from '../focusTrap.ts'
 
@@ -25,6 +24,8 @@ type FormatPanelProps = {
   readOnlyNote: boolean
   /** Close it. `restoreFocus`: put focus back on the toggle (not when opening the Styles menu). */
   onClose: (options?: { restoreFocus?: boolean }) => void
+  /** Opens the toolbar's Styles menu (the style name is a button). */
+  onOpenStyles: () => void
 }
 
 
@@ -207,7 +208,7 @@ function TextSection({ info }: { info: FormatInfo }) {
  * The Format sidebar: the formatting at the cursor or selection, where each part comes from, and the
  * styles involved. Reads the same derivation as the rest of the app (formatInfoFor).
  */
-export function FormatPanel({ editor, mode, off, readOnlyNote, onClose }: FormatPanelProps) {
+export function FormatPanel({ editor, mode, off, readOnlyNote, onClose, onOpenStyles }: FormatPanelProps) {
   // The editor state itself (compared by identity: the derivation is cached per state).
   const state = useEditorState<EditorState | null>({
     editor,
@@ -241,7 +242,7 @@ export function FormatPanel({ editor, mode, off, readOnlyNote, onClose }: Format
   function openStyles() {
     // The sheet closes first (without handing focus back), then the Styles menu opens on top.
     if (sheet) onClose({ restoreFocus: false })
-    requestStylesMenu()
+    onOpenStyles()
   }
 
   return (

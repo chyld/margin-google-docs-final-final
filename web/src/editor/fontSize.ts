@@ -1,37 +1,26 @@
 // Font sizes in points, as the toolbar shows them.
 import type { Editor } from '@tiptap/core'
-import { HEADING_LEVELS } from '../../../shared/extensions.ts'
+import { BLOCK_TYPOGRAPHY } from '../../../shared/styleProps.ts'
+import { getStylesSnapshot } from '../state/namedStyles.ts'
 import { runWithEndStyle } from './endStyle.ts'
-import { styleById } from '../state/namedStyles.ts'
-import { effectiveTextProps } from './styleCommands.ts'
-import { parseFontSize } from './formatInfo.ts'
+import { formatInfoFor, parseFontSize } from './formatInfo.ts'
+import { stylesStatus } from './styleIndex.ts'
+import { toolbarFontSize } from './toolbarState.ts'
+
+/** Normal text's size (pt), from the page's typography. */
+const DEFAULT_SIZE = parseFontSize(BLOCK_TYPOGRAPHY.paragraph.fontSize) ?? 11
 
 export const FONT_SIZE_PRESETS = [8, 9, 10, 11, 12, 14, 18, 24, 30, 36, 48, 60, 72, 96]
 export const MIN_FONT_SIZE = 1
 export const MAX_FONT_SIZE = 400
 
-// Matches the pt sizes in editor.css.
-const HEADING_SIZES: Record<number, number> = { 1: 20, 2: 16, 3: 14, 4: 12, 5: 11, 6: 11 }
-const PARAGRAPH_SIZE = 11
-
 /** A stored font-size value in points, or null when it isn't expressed in pt or px (defined in formatInfo.ts). */
 export { parseFontSize }
 
-/**
- * The size at the cursor: the mark's size, else the size the text's style gives it, else the block's
- * default. Null if it can't be shown in pt.
- */
+/** The size at the cursor, as the toolbar's size box shows it (null when mixed or not in pt/px). */
 export function currentFontSize(editor: Editor): number | null {
-  const raw = editor.getAttributes('textStyle').fontSize as string | null | undefined
-  if (raw) return parseFontSize(raw)
-  const styled = effectiveTextProps(editor.state, id => styleById(id)?.props)?.fontSize
-  if (styled) return parseFontSize(styled)
-  const linked = styleById(editor.state.selection.$from.parent.attrs.styleId as string | undefined)?.props.block
-  if (linked && linked !== 'paragraph') return HEADING_SIZES[Number(linked.slice(1))] ?? PARAGRAPH_SIZE
-  for (const level of HEADING_LEVELS) {
-    if (editor.isActive('heading', { level })) return HEADING_SIZES[level] ?? PARAGRAPH_SIZE
-  }
-  return PARAGRAPH_SIZE
+  const snapshot = getStylesSnapshot()
+  return toolbarFontSize(formatInfoFor(editor.state, snapshot.styles, stylesStatus(snapshot)), editor.state)
 }
 
 export function clampFontSize(size: number): number {
@@ -45,6 +34,7 @@ export function setFontSize(editor: Editor, size: number): boolean {
 
 /** Steps the size at the cursor by `delta` points (Ctrl+Shift+. and Ctrl+Shift+,). */
 export function stepFontSize(editor: Editor, delta: number): boolean {
-  const size = currentFontSize(editor) ?? PARAGRAPH_SIZE
+  // Mixed sizes (blank box): step from normal text's size.
+  const size = currentFontSize(editor) ?? DEFAULT_SIZE
   return setFontSize(editor, size + delta)
 }

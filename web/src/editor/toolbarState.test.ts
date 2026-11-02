@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
-// What the formatting toolbar shows, case by case. Written against the toolbar as it was before
-// Phase 9 (literal expected values), so moving the toolbar onto the Format sidebar's reading can't
-// change anything silently: every expectation that changes is a deliberate, listed change.
+// What the formatting toolbar shows, case by case (literal expected values). Recorded from the
+// toolbar before Phase 9; the toolbar now reads the Format sidebar's derivation, and every value that
+// changed then is a deliberate change listed in PLAN-PHASE9.md §9 (marked "changed" below).
 import { afterEach, describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import { NodeSelection, TextSelection } from '@tiptap/pm/state'
 import { extensions } from '../../../shared/extensions.ts'
-import { selectState } from '../components/Toolbar.tsx'
-import { setStylesForTesting } from '../state/namedStyles.ts'
+import { getStylesSnapshot, setStylesForTesting } from '../state/namedStyles.ts'
+import { stylesStatus } from './styleIndex.ts'
+import { selectState } from './toolbarState.ts'
 
 const BOLD = '11111111-1111-4111-8111-111111111111'
 const BOLD2 = '22222222-2222-4222-8222-222222222222'
@@ -34,6 +35,11 @@ const p = (content: Json[], attrs: Json = {}) => ({ type: 'paragraph', attrs, co
 const named = (id: string) => ({ type: 'namedStyle', attrs: { id } })
 const textStyle = (attrs: Json) => ({ type: 'textStyle', attrs: { color: null, fontFamily: null, fontSize: null, ...attrs } })
 
+const read = (current: Editor) => {
+  const snapshot = getStylesSnapshot()
+  return selectState(current as never, snapshot.styles, stylesStatus(snapshot))!
+}
+
 function open(content: Json[]) {
   const element = document.createElement('div')
   document.body.append(element)
@@ -46,7 +52,7 @@ function shown(content: Json[], from: number, to = from, setup?: (editor: Editor
   const current = open(content)
   current.view.dispatch(current.state.tr.setSelection(TextSelection.create(current.state.doc, from, to)))
   setup?.(current)
-  const state = selectState({ editor: current as never })!
+  const state = read(current)
   return {
     block: state.block,
     bold: state.bold,
@@ -85,6 +91,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Bold stays on (both styles bold). Changed: the sizes differ (14pt and 11pt), so the size box is blank.
   it('two different bold styles', () => {
     expect(shown([p([text('one ', [named(BOLD)]), text('two', [named(BOLD2)])])], 1, 8)).toMatchInlineSnapshot(`
       {
@@ -94,7 +101,7 @@ describe('toolbar display', () => {
         "code": false,
         "color": null,
         "fontFamily": null,
-        "fontSize": 11,
+        "fontSize": null,
         "highlight": null,
         "italic": false,
         "link": false,
@@ -165,6 +172,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: the boxes show what typing here gets (nothing), not the cleared text's color and size.
   it('a collapsed cursor after clearing formatting inside colored text', () => {
     expect(
       shown([p([text('Hello', [textStyle({ color: '#d93025', fontSize: '18pt' }), { type: 'bold' }])])], 3, 3, current =>
@@ -176,9 +184,9 @@ describe('toolbar display', () => {
         "block": "paragraph",
         "bold": false,
         "code": false,
-        "color": "#d93025",
+        "color": null,
         "fontFamily": null,
-        "fontSize": 18,
+        "fontSize": 11,
         "highlight": null,
         "italic": false,
         "link": false,
@@ -207,6 +215,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: the link draws the underline, so Underline is off, as for every link.
   it('a link whose style underlines', () => {
     expect(shown([p([text('site', [{ type: 'link', attrs: { href: 'https://example.com' } }, named(UNDERLINE)])])], 1, 5)).toMatchInlineSnapshot(`
       {
@@ -221,7 +230,7 @@ describe('toolbar display', () => {
         "italic": false,
         "link": true,
         "strike": false,
-        "underline": true,
+        "underline": false,
       }
     `)
   })
@@ -341,6 +350,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: it shows the yellow the page paints it with.
   it('a highlight with no color', () => {
     expect(shown([p([text('marked', [{ type: 'highlight', attrs: { color: null } }])])], 1, 7)).toMatchInlineSnapshot(`
       {
@@ -351,7 +361,7 @@ describe('toolbar display', () => {
         "color": null,
         "fontFamily": null,
         "fontSize": 11,
-        "highlight": null,
+        "highlight": "#fff475",
         "italic": false,
         "link": false,
         "strike": false,
@@ -360,6 +370,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Named colors are shown as written. Changed: rgb() colors show as their hex value.
   it('pasted colors that are not hex', () => {
     expect(shown([p([text('red', [textStyle({ color: 'red' })])])], 1, 4)).toMatchInlineSnapshot(`
       {
@@ -384,7 +395,7 @@ describe('toolbar display', () => {
         "block": "paragraph",
         "bold": false,
         "code": false,
-        "color": "rgb(24, 128, 56)",
+        "color": "#188038",
         "fontFamily": null,
         "fontSize": 11,
         "highlight": null,
@@ -396,6 +407,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: blank when the selection mixes values (before: the first piece's value).
   it('mixed colors, sizes and fonts', () => {
     expect(
       shown(
@@ -414,9 +426,9 @@ describe('toolbar display', () => {
         "block": "paragraph",
         "bold": false,
         "code": false,
-        "color": "#d93025",
-        "fontFamily": "Lora",
-        "fontSize": 18,
+        "color": null,
+        "fontFamily": null,
+        "fontSize": null,
         "highlight": null,
         "italic": false,
         "link": false,
@@ -426,10 +438,11 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: blank (before: "left" whenever the paragraphs had their own alignment).
   it('mixed alignments', () => {
     expect(shown([p([text('one')], { textAlign: 'center' }), p([text('two')], { textAlign: 'right' })], 2, 8)).toMatchInlineSnapshot(`
       {
-        "align": "left",
+        "align": null,
         "block": "paragraph",
         "bold": false,
         "code": false,
@@ -445,6 +458,7 @@ describe('toolbar display', () => {
     `)
   })
 
+  // Changed: the sizes differ, so the size box is blank.
   it('mixed paragraph types', () => {
     expect(shown([p([text('one')]), { type: 'heading', attrs: { level: 2 }, content: [text('two')] }], 2, 8)).toMatchInlineSnapshot(`
       {
@@ -454,7 +468,7 @@ describe('toolbar display', () => {
         "code": false,
         "color": null,
         "fontFamily": null,
-        "fontSize": 11,
+        "fontSize": null,
         "highlight": null,
         "italic": false,
         "link": false,
@@ -471,7 +485,7 @@ describe('toolbar display', () => {
       p([text('b')]),
     ])
     current.view.dispatch(current.state.tr.setSelection(NodeSelection.create(current.state.doc, 3)))
-    const state = selectState({ editor: current as never })!
+    const state = read(current)
     expect({ imageSelected: state.imageSelected, imageAlign: state.imageAlign, align: state.align }).toMatchInlineSnapshot(`
       {
         "align": "left",

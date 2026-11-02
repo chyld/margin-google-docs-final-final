@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { getFormatPanel, requestStylesMenu, resetFormatPanelForTesting, setFormatPanelOpen, subscribeFormatPanel, toggleFormatPanel } from './formatPanel.ts'
+import { getFormatPanel, resetFormatPanelForTesting, setFormatPanelOpen, subscribeFormatPanel, toggleFormatPanel } from './formatPanel.ts'
 
 let width = 1400
 const listeners = new Set<() => void>()
@@ -74,11 +74,6 @@ describe('Format sidebar state', () => {
     stop()
   })
 
-  it('asking for the Styles menu bumps a counter', () => {
-    const before = getFormatPanel().stylesRequest
-    requestStylesMenu()
-    expect(getFormatPanel().stylesRequest).toBe(before + 1)
-  })
 })
 
 describe('Format sidebar without storage', () => {

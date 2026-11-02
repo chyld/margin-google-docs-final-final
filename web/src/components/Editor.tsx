@@ -4,18 +4,15 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import type { EditorOptions, JSONContent, Editor as TiptapEditor } from '@tiptap/react'
 import { extensions as sharedExtensions } from '../../../shared/extensions.ts'
 import type { DocJSON } from '../../../shared/types.ts'
-import { ensureStyleFont, loadDocumentFonts } from '../state/fonts.ts'
-import { favoriteInSlot, getStylesSnapshot, loadStyles, styleById, subscribeStyles } from '../state/namedStyles.ts'
-import { DOMSerializer } from '@tiptap/pm/model'
-import { schema as sharedSchema } from '../../../shared/schema.ts'
-import { styleDeclarations } from '../../../shared/styleProps.ts'
-import { applyFailureMessage, applyStyle } from '../editor/styleCommands.ts'
+import { loadDocumentFonts } from '../state/fonts.ts'
+import { subscribeStyles } from '../state/namedStyles.ts'
+import { styledClipboardSerializer } from '../editor/clipboard.ts'
+import { handleEditorShortcut } from '../editor/commands.ts'
 import { EndStyleShortcuts } from '../editor/endStyle.ts'
 import { onReauthenticated } from '../state/session.ts'
-import { stepFontSize } from '../editor/fontSize.ts'
 import { cancelImageUploads, ImageInput } from '../editor/imageInput.ts'
 import { showNotice } from '../state/notices.ts'
-import { clearFormatting, Toolbar } from './Toolbar.tsx'
+import { Toolbar } from './Toolbar.tsx'
 import { createPortal } from 'react-dom'
 import { getFormatPanel, setFormatPanelOpen, toggleFormatPanel, useFormatPanel } from '../state/formatPanel.ts'
 import { FormatPanel } from './FormatPanel.tsx'
@@ -38,6 +35,9 @@ type EditorProps = {
 
 export function Editor({ content, readOnly, paused = false, editorRef, onChange, onContentError }: EditorProps) {
   const [linkOpen, setLinkOpen] = useState(false)
+  // Bumped by the Format sidebar's style name: opens the toolbar's Styles menu.
+  const [stylesMenuRequest, setStylesMenuRequest] = useState(0)
+  const openStylesMenu = useCallback(() => setStylesMenuRequest(count => count + 1), [])
   // Once the stored content fails to load, the editor holds a fallback doc that must never be saved.
   const blocked = useRef(false)
   const callbacks = useRef({ onChange, onContentError })
@@ -48,39 +48,9 @@ export function Editor({ content, readOnly, paused = false, editorRef, onChange,
 
   // Stable options: a new object each render would make Tiptap re-apply them on every keystroke.
   const editorProps = useMemo<EditorOptions['editorProps']>(
-    () => withStyledClipboard({
+    () => ({
       attributes: { class: 'document', 'aria-label': 'Document', spellcheck: 'true' },
-      handleKeyDown: (view, event) => {
-        const mod = event.metaKey || event.ctrlKey
-        // Ctrl/⌘+Alt+Shift+1…9 applies favorite style 1…9 (matched by key position, any layout).
-        const digit = /^Digit([1-9])$/.exec(event.code)?.[1]
-        if (mod && event.altKey && event.shiftKey && digit) {
-          event.preventDefault()
-          if (!view.editable) return true
-          const current = editorRef.current
-          if (current) applyFavorite(current, Number(digit))
-          return true
-        }
-        // Ctrl/⌘+\ clears formatting, like Google Docs (Shift+\ is the sidebar).
-        if (mod && !event.altKey && !event.shiftKey && event.code === 'Backslash') {
-          event.preventDefault()
-          const current = editorRef.current
-          if (view.editable && current) clearFormatting(current)
-          return true
-        }
-        if (!mod || event.altKey) return false
-        // Ctrl+Shift+. / Ctrl+Shift+, change the font size (event.code: Shift changes event.key).
-        if (event.shiftKey && (event.code === 'Period' || event.code === 'Comma')) {
-          event.preventDefault()
-          const current = editorRef.current
-          if (view.editable && current) stepFontSize(current, event.code === 'Period' ? 1 : -1)
-          return true
-        }
-        if (event.shiftKey || event.key.toLowerCase() !== 'k') return false
-        event.preventDefault()
-        if (view.editable) setLinkOpen(true)
-        return true
-      },
+      handleKeyDown: (view, event) => handleEditorShortcut(view, event, editorRef.current, { openLink: () => setLinkOpen(true) }),
       // Links don't open on a plain click (that would make them hard to edit); Ctrl/Cmd+click opens them.
       handleClick: (_view, _pos, event) => {
         if (!(event.metaKey || event.ctrlKey)) return false
@@ -89,6 +59,7 @@ export function Editor({ content, readOnly, paused = false, editorRef, onChange,
         window.open(href, '_blank', 'noopener,noreferrer')
         return true
       },
+      clipboardSerializer: styledClipboardSerializer,
     }),
     [],
   )
@@ -219,12 +190,19 @@ export function Editor({ content, readOnly, paused = false, editorRef, onChange,
   // toolbar and the Format sidebar, so they agree.
   const off = readOnly || paused || blocked.current
   const panelNode = editor && panel.open && (
-    <FormatPanel editor={editor} mode={panel.mode} off={off} readOnlyNote={readOnly || blocked.current} onClose={closePanel} />
+    <FormatPanel
+      editor={editor}
+      mode={panel.mode}
+      off={off}
+      readOnlyNote={readOnly || blocked.current}
+      onClose={closePanel}
+      onOpenStyles={openStylesMenu}
+    />
   )
 
   return (
     <>
-      <Toolbar editor={editor} readOnly={off} linkOpen={linkOpen} onLinkOpenChange={setLinkOpen} />
+      <Toolbar editor={editor} readOnly={off} linkOpen={linkOpen} onLinkOpenChange={setLinkOpen} stylesMenuRequest={stylesMenuRequest} />
       <div className="editor-body">
         <div className="canvas" onMouseDown={focusEnd}>
           <div className="page" onMouseDown={focusEnd}>
@@ -244,73 +222,6 @@ export function Editor({ content, readOnly, paused = false, editorRef, onChange,
         )}
     </>
   )
-}
-
-/**
- * Copying styled text into another app (mail, Google Docs) should keep its look, but the look lives in
- * Margin's stylesheet. The clipboard copy therefore gets the style's declarations inline too (the
- * data-style tags stay, so pasting back into Margin keeps the link).
- */
-function withStyledClipboard(props: NonNullable<EditorOptions['editorProps']>): NonNullable<EditorOptions['editorProps']> {
-  return { ...props, clipboardSerializer: styledClipboardSerializer }
-}
-
-// Built from the shared schema: node and mark types are looked up by name, and the editor's schema
-// has exactly the same ones (its client-only extensions add none).
-const baseSerializer = DOMSerializer.fromSchema(sharedSchema)
-const styledClipboardSerializer = new (class extends DOMSerializer {
-  serializeFragment(...args: Parameters<DOMSerializer['serializeFragment']>) {
-    const fragment = baseSerializer.serializeFragment(...args)
-    inlineStyleLooks(fragment)
-    return fragment
-  }
-})(baseSerializer.nodes, baseSerializer.marks)
-
-function inlineStyleLooks(root: DocumentFragment | HTMLElement): void {
-  const apply = (element: Element, id: string | null, kind: 'inline' | 'block') => {
-    const declarations = styleDeclarations(styleById(id)?.props)?.[kind]
-    if (!declarations?.length || !(element instanceof HTMLElement)) return
-    element.setAttribute('style', `${declarations.join('; ')};${element.getAttribute('style') ?? ''}`)
-  }
-  for (const element of root.querySelectorAll('[data-style]')) apply(element, element.getAttribute('data-style'), 'inline')
-  for (const element of root.querySelectorAll('[data-style-id]')) apply(element, element.getAttribute('data-style-id'), 'block')
-}
-
-// Pressed again while the styles are still loading: one load, then the latest press is applied.
-let pendingFavorite: { editor: TiptapEditor; slot: number } | null = null
-
-function runFavorite(editor: TiptapEditor, slot: number): void {
-  if (editor.isDestroyed || !editor.isEditable) return
-  const style = favoriteInSlot(slot)
-  if (!style) {
-    showNotice(`No favorite style ${slot} yet. Star a style in the Styles menu.`)
-    return
-  }
-  const result = applyStyle(editor.state, style)
-  if ('tr' in result) editor.view.dispatch(result.tr)
-  else showNotice(applyFailureMessage(result.reason, style.name))
-  ensureStyleFont(style.props.fontFamily)
-}
-
-/** Applies favorite style `slot` to the editor's current selection, loading the styles first if needed. */
-function applyFavorite(editor: TiptapEditor, slot: number): void {
-  if (getStylesSnapshot().loaded) {
-    runFavorite(editor, slot)
-    return
-  }
-  const waiting = pendingFavorite !== null
-  pendingFavorite = { editor, slot }
-  if (waiting) return
-  loadStyles()
-    .then(() => {
-      const next = pendingFavorite
-      pendingFavorite = null
-      if (next) runFavorite(next.editor, next.slot)
-    })
-    .catch(() => {
-      pendingFavorite = null
-      showNotice("Couldn't load your styles. Try again in a moment.")
-    })
 }
 
 function cancelUploads(editor: TiptapEditor) {

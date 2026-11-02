@@ -184,6 +184,15 @@ export const BLOCK_TYPOGRAPHY: Record<StyleBlock, BlockLook> = {
   h6: { fontSize: '11pt', fontWeight: 400, lineHeight: '1.25', color: '#666666', fontStyle: 'italic', margin: '1.2em 0 0.4em' },
 }
 
+/** Colors the page gives some elements (web/src/styles/editor.css), reported by the Format sidebar. */
+export const ELEMENT_COLORS = {
+  link: '#1a73e8',
+  quote: '#5f6368',
+  checked: '#5f6368',
+  /** A highlight mark without its own color. */
+  highlight: '#fff475',
+} as const
+
 /**
  * CSS declarations for a style. `inline` styles tagged text (every use of a style tags its text);
  * `block` gives linked paragraphs the heading look and alignment; `blockMargin` is the heading

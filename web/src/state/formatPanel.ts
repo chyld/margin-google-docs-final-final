@@ -14,15 +14,12 @@ const OPEN_BY_DEFAULT = '(min-width: 1280px)'
 type Snapshot = {
   mode: PanelMode
   open: boolean
-  /** Bumped to ask the toolbar's Styles menu to open. */
-  stylesRequest: number
 }
 
 const listeners = new Set<() => void>()
 let transientOpen = false
 /** The docked choice when this browser can't store it (private mode, storage blocked). */
 let memoryDocked: boolean | null = null
-let stylesRequest = 0
 let snapshot: Snapshot | null = null
 let watching = false
 
@@ -48,7 +45,7 @@ function compute(): Snapshot {
   const mode = currentMode()
   // A choice that couldn't be written wins over whatever storage still says.
   const open = mode === 'docked' ? (memoryDocked ?? readStored() ?? media(OPEN_BY_DEFAULT)) : transientOpen
-  return { mode, open, stylesRequest }
+  return { mode, open }
 }
 
 function emit(): void {
@@ -58,7 +55,7 @@ function emit(): void {
     transientOpen = false
     next.open = next.mode === 'docked' ? next.open : false
   }
-  if (!snapshot || next.mode !== snapshot.mode || next.open !== snapshot.open || next.stylesRequest !== snapshot.stylesRequest) {
+  if (!snapshot || next.mode !== snapshot.mode || next.open !== snapshot.open) {
     snapshot = next
     for (const listener of listeners) listener()
   }
@@ -117,12 +114,6 @@ export function toggleFormatPanel(): void {
   setFormatPanelOpen(!getFormatPanel().open)
 }
 
-/** Asks the toolbar's Styles menu to open (from the panel's style name). */
-export function requestStylesMenu(): void {
-  stylesRequest += 1
-  emit()
-}
-
 /** For tests: forget the cached state. */
 export function resetFormatPanelForTesting(): void {
   unwatch?.()
@@ -131,6 +122,5 @@ export function resetFormatPanelForTesting(): void {
   watching = false
   transientOpen = false
   memoryDocked = null
-  stylesRequest = 0
   snapshot = null
 }

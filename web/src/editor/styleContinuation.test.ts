@@ -6,7 +6,9 @@ import { TextSelection } from '@tiptap/pm/state'
 import { closeHistory } from '@tiptap/pm/history'
 import { extensions } from '../../../shared/extensions.ts'
 import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
-import { applyStyle, effectiveTextProps } from './styleCommands.ts'
+import { applyStyle } from './styleCommands.ts'
+import { formatInfoFor } from './formatInfo.ts'
+import { toolbarFormatting } from './toolbarState.ts'
 import { EndStyleShortcuts } from './endStyle.ts'
 
 const ID = '11111111-1111-4111-8111-111111111111'
@@ -345,13 +347,14 @@ describe('any formatting-bar change ends the style (the text keeps its look)', (
     ])
     select(1, 5)
     const table: Record<string, StyleProps> = { [ID]: { bold: true, color: '#111111' }, [other]: { bold: true, color: '#222222' } }
-    const props = effectiveTextProps(editor!.state, id => table[id])
-    expect(props?.bold).toBe(true)
-    expect(props?.color).toBeUndefined()
+    const list = Object.entries(table).map(([id, props]) => ({ id, name: id, props, favoriteSlot: null, deleted: false, createdAt: 0, updatedAt: 0 }))
+    const shown = toolbarFormatting(formatInfoFor(editor!.state, list, 'loaded'), editor!.state)
+    expect(shown.bold).toBe(true)
+    expect(shown.color).toBeNull()
   })
 
   it('clear formatting at the cursor types plain even with no style (direct bold only)', async () => {
-    const { clearFormatting } = await import('../components/Toolbar.tsx').catch(() => ({ clearFormatting: null }))
+    const { clearFormatting } = await import('./commands.ts').catch(() => ({ clearFormatting: null }))
     const { runWithEndStyle } = await import('./endStyle.ts')
     const { clearInlineFormatting } = await import('./styleCommands.ts')
     mount([{ type: 'paragraph', content: [{ type: 'text', text: 'Bold', marks: [{ type: 'bold' }] }] }])

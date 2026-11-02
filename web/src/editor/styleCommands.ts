@@ -457,41 +457,6 @@ export function endStyle(tr: Transaction, styleOf: StyleOf, { materialize = true
 }
 
 /**
- * The style's text parts that really apply at the selection (for the toolbar's buttons). For a
- * range, a part counts when every piece of text has it, from its own style or directly (two
- * different bold styles still show Bold).
- */
-export function effectiveTextProps(state: EditorState, styleOf: StyleOf): StyleProps | null {
-  if (state.selection.empty) {
-    const current = currentStyle(state)
-    if (current.kind !== 'style') return null
-    if (current.source === 'paragraph') {
-      // A paragraph link alone gives text parts only to an empty line (typing there takes the style).
-      const block = state.selection.$from.parent
-      if (block.content.size > 0) return null
-    }
-    return styleOf(current.id) ?? null
-  }
-  const pieces: Array<{ marks: readonly Mark[]; props: StyleProps }> = []
-  state.doc.nodesBetween(state.selection.from, state.selection.to, node => {
-    if (!node.isText) return true
-    const tag = node.marks.find(mark => mark.type.name === 'namedStyle')
-    pieces.push({ marks: node.marks, props: (tag ? styleOf(tag.attrs.id as string) : undefined) ?? {} })
-    return false
-  })
-  if (pieces.length === 0 || pieces.every(piece => Object.keys(piece.props).length === 0)) return null
-  const out: Record<string, unknown> = {}
-  for (const key of Object.keys(FLAG_MARKS) as Array<keyof typeof FLAG_MARKS>) {
-    if (pieces.every(piece => piece.props[key] || piece.marks.some(mark => mark.type.name === FLAG_MARKS[key]))) out[key] = true
-  }
-  for (const key of ['color', 'highlight', 'fontFamily', 'fontSize'] as const) {
-    const values = new Set(pieces.map(piece => piece.props[key]))
-    if (values.size === 1 && [...values][0] !== undefined) out[key] = [...values][0]
-  }
-  return out as StyleProps
-}
-
-/**
  * Each touched paragraph's alignment (its own, else its style's), to put back after a type change:
  * Tiptap drops attributes when a type change spans several paragraphs.
  */
