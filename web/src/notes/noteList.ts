@@ -155,6 +155,8 @@ export function createNoteList({ api, queue }: { api: NoteListApi; queue: Pick<S
       tagsTimer = null
       listRequest += 1
       tagsRequest += 1
+      // A request that never answers mustn't make saves refetch after a restart.
+      listLoading = null
     },
 
     setQuery,
