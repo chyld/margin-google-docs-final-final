@@ -21,19 +21,11 @@ import {
 import { showNotice } from '../state/notices.ts'
 import { applyFailureMessage, applyStyle, captureProps, removeStyle } from '../editor/styleCommands.ts'
 import type { CurrentStyle } from '../editor/styleCommands.ts'
+import { blockLabel } from '../editor/labels.ts'
 import { ToolMenuButton } from './ToolbarParts.tsx'
 
 const SEARCH_AFTER = 8
 const SHORTCUT = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘⌥⇧' : 'Ctrl+Alt+Shift+'
-const BLOCK_LABELS: Record<string, string> = {
-  paragraph: 'Normal text',
-  h1: 'Heading 1',
-  h2: 'Heading 2',
-  h3: 'Heading 3',
-  h4: 'Heading 4',
-  h5: 'Heading 5',
-  h6: 'Heading 6',
-}
 
 /** Inline CSS for a preview of the style (size kept readable in the menu). */
 export function previewStyle(props: StyleProps): CSSProperties {
@@ -63,7 +55,7 @@ function caption(props: StyleProps): string {
   const family = firstFontFamily(props.fontFamily)
   if (family) parts.push(family)
   if (props.fontSize) parts.push(props.fontSize.replace('pt', ''))
-  if (props.block) parts.push(BLOCK_LABELS[props.block] ?? props.block)
+  if (props.block) parts.push(blockLabel(props.block))
   if (props.align) parts.push(props.align[0]?.toUpperCase() + props.align.slice(1))
   return parts.join(' · ')
 }
@@ -452,7 +444,7 @@ function availableParts(props: StyleProps, editor: Editor): Array<Part & { check
   if (props.strike) parts.push({ key: 'strike', label: 'Strikethrough', value: true, checked: true })
   const parent = editor.state.selection.$from.parent
   const block = props.block ?? (parent.type.name === 'heading' ? `h${parent.attrs.level as number}` : 'paragraph')
-  parts.push({ key: 'block', label: `Paragraph: ${BLOCK_LABELS[block] ?? block}`, value: block, checked: props.block !== undefined })
+  parts.push({ key: 'block', label: `Paragraph: ${blockLabel(block)}`, value: block, checked: props.block !== undefined })
   const align = props.align ?? 'left'
   parts.push({ key: 'align', label: `Alignment: ${align[0]?.toUpperCase()}${align.slice(1)}`, value: align, checked: props.align !== undefined })
   return parts

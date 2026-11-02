@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NoteSummary } from '../../../shared/types.ts'
-import { createSaveQueue, decideDraft, DRAFT_DELAY_MS, DRAFT_PREFIX, isRetryable, KEEPALIVE_LIMIT_BYTES } from './saveQueue.ts'
+import { createSaveQueue, decideDraft, DRAFT_DELAY_MS, isRetryable, KEEPALIVE_LIMIT_BYTES } from './saveQueue.ts'
+
+const DRAFT_PREFIX = 'margin:draft:test-user:'
 import type { Draft, SavePatch } from './saveQueue.ts'
 
 type Call = {
@@ -38,6 +40,7 @@ let clock: number
 
 function makeQueue() {
   return createSaveQueue({
+    draftPrefix: DRAFT_PREFIX,
     storage,
     now: () => clock,
     onSaved: summary => saved.push(summary),
@@ -405,6 +408,7 @@ describe('decideDraft', () => {
 describe('accounts: pause, resume, suspend, drain', () => {
   function queueWith(options: Partial<Parameters<typeof createSaveQueue>[0]> = {}) {
     return createSaveQueue({
+      draftPrefix: DRAFT_PREFIX,
       storage,
       now: () => clock,
       send: (id, patch) =>
@@ -428,14 +432,11 @@ describe('accounts: pause, resume, suspend, drain', () => {
   }
 
   it('pauses on 401 without retrying or losing the edit, then resumes', async () => {
-    const authErrors: unknown[] = []
-    const queue = queueWith({ onAuthError: error => authErrors.push(error) })
+    const queue = queueWith()
     queue.update('n1', { title: 'Hello' })
     await vi.advanceTimersByTimeAsync(1000)
     await calls[0]?.reject(new HttpError(401, 'Sign in required'))
     expect(queue.getState('n1').status).toBe('paused')
-    expect(authErrors).toHaveLength(1)
-    expect(queue.isPaused()).toBe(true)
 
     // No background retries while signed out, and new edits just wait.
     queue.update('n1', { title: 'Hello again' })
@@ -493,6 +494,7 @@ describe('accounts: pause, resume, suspend, drain', () => {
 
   it('reports when drafts could not be stored', () => {
     const queue = createSaveQueue({
+      draftPrefix: DRAFT_PREFIX,
       storage: {
         getItem: () => null,
         setItem: () => {

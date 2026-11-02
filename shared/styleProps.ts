@@ -1,11 +1,13 @@
 // Saved ("named") styles: what a style may contain, in one canonical form. Shared by the server
 // (validation, storage) and the client (capture, CSS). No imports from doc.ts or extensions.ts, so
-// both can use this module without an import cycle.
+// both can use this module without an import cycle (safe.ts is a dependency-free leaf).
+import { isSafeFontFamily } from './safe.ts'
 
-export const BLOCK_TYPES = ['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
+export const STYLE_BLOCKS = ['paragraph', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'] as const
+/** Paragraph alignments (the editor's TextAlign uses the same list). */
 export const STYLE_ALIGNMENTS = ['left', 'center', 'right', 'justify'] as const
 
-export type StyleBlock = (typeof BLOCK_TYPES)[number]
+export type StyleBlock = (typeof STYLE_BLOCKS)[number]
 export type StyleAlign = (typeof STYLE_ALIGNMENTS)[number]
 
 export type StyleProps = {
@@ -38,15 +40,14 @@ export const MAX_PROPS_JSON = 2048
 export const INLINE_KEYS = ['fontFamily', 'fontSize', 'color', 'highlight', 'bold', 'italic', 'underline', 'strike'] as const
 export const BLOCK_KEYS = ['block', 'align'] as const
 const FLAG_KEYS = ['bold', 'italic', 'underline', 'strike'] as const
+/** Style parts that are on/off marks: the part's name and the mark's name. */
+export const FLAG_MARKS = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strike' } as const
 const KEY_ORDER = [...INLINE_KEYS, ...BLOCK_KEYS] as const
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
-// The same rules as the document validator (shared/doc.ts), restricted further: these values are
-// written into a generated stylesheet, so nothing that could end a declaration or a rule.
-// No control characters either: a newline inside a quoted name would end the CSS string early.
-const FONT_NAME = String.raw`(?:"[^"'\\;:(){}<>\x00-\x1f\x7f]{1,100}"|'[^"'\\;:(){}<>\x00-\x1f\x7f]{1,100}'|[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*)`
-const SAFE_FONT_FAMILY = new RegExp(`^\\s*${FONT_NAME}(?:\\s*,\\s*${FONT_NAME}){0,19}\\s*$`)
+// These values are written into a generated stylesheet, so colors are stricter than in documents
+// (canonical hex only); font families follow the same rule as documents (shared/safe.ts).
 const HEX = /^#[0-9a-f]{6}$/
 
 export function isUuid(value: unknown): value is string {
@@ -80,7 +81,7 @@ export function canonicalFontSize(value: unknown): string | null {
 }
 
 export function canonicalFontFamily(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length > 600 || !SAFE_FONT_FAMILY.test(value)) return null
+  if (!isSafeFontFamily(value)) return null
   return value.trim().replace(/\s*,\s*/g, ', ')
 }
 
@@ -117,7 +118,7 @@ export function cleanStyleProps(value: unknown): StyleProps | null {
         break
       }
       case 'block':
-        if (!(BLOCK_TYPES as readonly unknown[]).includes(raw)) return null
+        if (!(STYLE_BLOCKS as readonly unknown[]).includes(raw)) return null
         props.block = raw as StyleBlock
         break
       case 'align':

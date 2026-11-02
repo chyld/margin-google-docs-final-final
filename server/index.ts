@@ -2,11 +2,10 @@ import type { Server } from 'node:http'
 import { resolve } from 'node:path'
 import { serve } from '@hono/node-server'
 import { createApp } from './app.ts'
-import { createSessionStore } from './auth.ts'
 import { dataPaths, openDatabase, prepareDataDir } from './db.ts'
 import { createFontService, loadFontCatalog } from './fonts.ts'
 import { createImageStore } from './images.ts'
-import { createUserStore } from './users.ts'
+import { createServices } from './services.ts'
 
 const host = process.env.HOST ?? '127.0.0.1'
 const port = Number(process.env.PORT ?? 5555)
@@ -29,8 +28,11 @@ const db = openDatabase(prepareDataDir(dataDir))
 const paths = dataPaths(dataDir)
 const images = createImageStore({ db, dir: paths.images, trashDir: paths.imageTrash })
 const fonts = createFontService({ db, dir: paths.fonts, catalog: loadFontCatalog(), downloads: fontDownloads })
+const services = createServices(db)
+const { sessions, users } = services
 const app = createApp({
   db,
+  services,
   hosts: { ports: [publicPort, String(port)], extraHosts },
   images,
   fonts,
@@ -38,8 +40,8 @@ const app = createApp({
   cookieName: `margin_session_${publicPort}`,
   secureCookies,
 })
-const sessions = createSessionStore(db)
-const users = createUserStore(db)
+// Notes from before accounts (user_id NULL) that were never claimed: this version can't reach them.
+const unownedNotes = db.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id IS NULL')
 
 function maintenance(): void {
   try {
@@ -55,13 +57,14 @@ function maintenance(): void {
   } catch (error) {
     console.error('Session cleanup failed', error)
   }
-  const legacy = users.legacyCounts()
-  if (legacy.notes || legacy.images) {
-    console.log(
-      `${legacy.notes} note(s) and ${legacy.images} image(s) from before accounts are waiting to be claimed: ` +
-        'run "margin-user add <name>" (first account) or "margin-user claim <name>"',
+  const unowned = Number((unownedNotes.get() as { n: number }).n)
+  if (unowned > 0) {
+    console.warn(
+      `${unowned} note(s) from before accounts can't be opened by this version. Open this data once with ` +
+        'the margin:phase8 image and run "margin-user claim <name>" to give them to an account.',
     )
-  } else if (users.count() === 0) {
+  }
+  if (users.count() === 0) {
     console.log('No accounts yet: create one with "margin-user add <name>"')
   }
 }

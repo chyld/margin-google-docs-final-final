@@ -411,16 +411,10 @@ describe('auth API', () => {
     expect((await request('POST', '/api/notes', https)).status).toBe(403)
   })
 
-  it('reports old notes waiting only while there is something to claim', async () => {
+  it('answers /auth/me with the signed-in user only', async () => {
     const alice = signedInUser(db)
-    const me = async () => (await (await request('GET', '/api/auth/me', { cookie: alice.cookie })).json()) as Record<string, unknown>
-    expect(await me()).toMatchObject({ legacyPending: false, legacyOwner: false })
-    db.prepare("UPDATE settings SET value = json_object('state', 'pending', 'migratedAt', 9e15) WHERE key = 'legacyClaim'").run()
-    expect(await me()).toMatchObject({ legacyPending: false })
-    db.prepare("INSERT INTO notes (id, title, content, text, created_at, updated_at) VALUES ('old', '', '{}', '', 0, 0)").run()
-    expect(await me()).toMatchObject({ legacyPending: true })
-    createUserStore(db).claim('alice')
-    expect(await me()).toMatchObject({ legacyPending: false, legacyOwner: true })
+    const me = (await (await request('GET', '/api/auth/me', { cookie: alice.cookie })).json()) as Record<string, unknown>
+    expect(Object.keys(me)).toEqual(['user'])
   })
 
   it('rejects oversized login bodies before hashing', async () => {
@@ -623,7 +617,7 @@ describe('isolation between users', () => {
   })
 })
 
-describe('migration 3 and claiming', () => {
+describe('migration 3 (accounts)', () => {
   function legacyDatabase(): string {
     const path = join(dataDir, 'v2.db')
     const v2 = new DatabaseSync(path)
@@ -654,45 +648,6 @@ describe('migration 3 and claiming', () => {
     expect(upgraded.prepare('SELECT COUNT(*) AS n FROM image_owners').get()).toEqual({ n: 0 })
   })
 
-  it('hides legacy notes until the first account claims them, once', () => {
-    const upgraded = openDatabase(legacyDatabase())
-    expect(upgraded.prepare('PRAGMA user_version').get()).toEqual({ user_version: SCHEMA_VERSION })
-    const users = createUserStore(upgraded)
-    expect(users.legacyClaim().state).toBe('pending')
-    expect(users.legacyCounts()).toEqual({ notes: 2, images: 1, favorites: true })
-
-    const { user, claimed } = users.create('chyld', 'hash', { claim: true })
-    expect(claimed).toEqual({ notes: 2, images: 1, favorites: true })
-    expect(upgraded.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id = ?').get(user.id)).toEqual({ n: 2 })
-    expect(upgraded.prepare("SELECT value FROM user_settings WHERE key = 'fontFavorites'").get()).toEqual({ value: '["Lora"]' })
-    expect(users.legacyClaim()).toMatchObject({ state: 'done', userId: user.id })
-
-    // Later accounts, and deleting everyone, never reopen claiming.
-    expect(users.create('second', 'hash', { claim: true }).claimed).toBeNull()
-    users.delete('second')
-    users.delete('chyld', { purge: true })
-    expect(users.count()).toBe(0)
-    expect(users.create('third', 'hash', { claim: true }).claimed).toBeNull()
-    expect(() => users.claim('third')).toThrow(/nothing/)
-    upgraded.close()
-  })
-
-  it('lets a later claim take what the first account declined, but not newer images', () => {
-    const upgraded = openDatabase(legacyDatabase())
-    const users = createUserStore(upgraded)
-    users.create('first', 'hash', { claim: false })
-    // An image uploaded after the migration whose owner is gone is not legacy data.
-    upgraded.prepare("INSERT INTO images VALUES (?, 'png', 1, ?, NULL, NULL)").run('b'.repeat(64), Date.now() + 60_000)
-    expect(users.claim('first')).toEqual({ notes: 2, images: 1, favorites: true })
-    upgraded.close()
-  })
-
-  it('starts fresh databases with nothing to claim', () => {
-    const users = createUserStore(db)
-    expect(users.legacyClaim().state).toBe('none')
-    expect(users.create('solo', 'hash', { claim: true }).claimed).toBeNull()
-  })
-
   it('migrates safely when two processes open the database at once', async () => {
     const path = legacyDatabase()
     const { spawn } = await import('node:child_process')
@@ -712,8 +667,8 @@ describe('migration 3 and claiming', () => {
 describe('user management', () => {
   it('merges favorites when moving them to someone who already has some', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
-    const bob = users.create('bob', 'hash').user
+    const alice = users.create('alice', 'hash')
+    const bob = users.create('bob', 'hash')
     const put = db.prepare("INSERT INTO user_settings (user_id, key, value) VALUES (?, 'fontFavorites', ?)")
     put.run(alice.id, '["Roboto","Lora"]')
     put.run(bob.id, '["Lato","Lora"]')
@@ -723,29 +678,16 @@ describe('user management', () => {
     expect(favorites(alice.id)).toBeUndefined()
   })
 
-  it('passes the legacy owner role along with the data', () => {
-    const users = createUserStore(db)
-    db.prepare("UPDATE settings SET value = json_object('state', 'pending', 'migratedAt', 0) WHERE key = 'legacyClaim'").run()
-    const typo = users.create('chlyd', 'hash', { claim: true }).user
-    const right = users.create('chyld', 'hash').user
-    expect(users.legacyClaim()).toMatchObject({ state: 'done', userId: typo.id })
-    users.reassign('chlyd', 'chyld')
-    expect(users.legacyClaim()).toMatchObject({ state: 'done', userId: right.id })
-    users.create('third', 'hash')
-    users.delete('chyld', { transferTo: 'third' })
-    expect(users.legacyClaim()).toMatchObject({ userId: users.find('third')?.id })
-  })
-
   it('treats favorites as something a user owns when deleting', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
+    const alice = users.create('alice', 'hash')
     db.prepare("INSERT INTO user_settings (user_id, key, value) VALUES (?, 'fontFavorites', '[\"Lora\"]')").run(alice.id)
     expect(() => users.delete('alice')).toThrow(/favorite/)
   })
 
   it('refuses a session for a password that changed since it was checked', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
+    const alice = users.create('alice', 'hash')
     users.setPassword('alice', 'new-hash')
     expect(createSessionStore(db).create(alice.id, 'ua', alice.password_changed_at)).toBeNull()
     const fresh = users.byId(alice.id)
@@ -764,8 +706,8 @@ describe('user management', () => {
 
   it('refuses to delete a user with notes unless told what to do with them', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
-    const bob = users.create('bob', 'hash').user
+    const alice = users.create('alice', 'hash')
+    const bob = users.create('bob', 'hash')
     db.prepare("INSERT INTO notes (id, title, content, text, created_at, updated_at, user_id) VALUES ('n', '', '{}', '', 0, 0, ?)").run(alice.id)
     expect(() => users.delete('alice')).toThrow(/--transfer-to/)
     expect(users.delete('alice', { transferTo: 'bob' })).toMatchObject({ notes: 1, images: 0 })
@@ -776,7 +718,7 @@ describe('user management', () => {
 
   it('reassigns everything, renames, and signs out on password change', () => {
     const users = createUserStore(db)
-    const typo = users.create('chlyd', 'hash').user
+    const typo = users.create('chlyd', 'hash')
     users.create('chyld', 'hash')
     db.prepare("INSERT INTO notes (id, title, content, text, created_at, updated_at, user_id) VALUES ('n', '', '{}', '', 0, 0, ?)").run(typo.id)
     expect(users.reassign('chlyd', 'chyld').notes).toBe(1)

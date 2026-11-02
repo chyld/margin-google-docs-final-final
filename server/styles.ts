@@ -10,7 +10,7 @@ import {
   styleNameKey,
 } from '../shared/styleProps.ts'
 import type { NamedStyle, StyleProps } from '../shared/styleProps.ts'
-import { transaction } from './users.ts'
+import { transaction } from './db.ts'
 
 type StyleRow = {
   id: string

@@ -11,16 +11,9 @@ import { createHash, randomBytes } from 'node:crypto'
 import { existsSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
-
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
-
-export const IMAGE_TYPES = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/gif': 'gif',
-  'image/webp': 'webp',
-} as const
-export type ImageType = keyof typeof IMAGE_TYPES
+import { IMAGE_NAME, IMAGE_TYPES, imageIdsIn } from '../shared/imageRules.ts'
+import type { ImageType } from '../shared/imageRules.ts'
+import { transaction } from './db.ts'
 
 export const CONTENT_TYPES: Record<string, ImageType> = {
   png: 'image/png',
@@ -29,18 +22,11 @@ export const CONTENT_TYPES: Record<string, ImageType> = {
   webp: 'image/webp',
 }
 
-/** A stored image's file name: the SHA-256 of its bytes plus an extension. */
-export const IMAGE_NAME = /^([0-9a-f]{64})\.(png|jpg|gif|webp)$/
-const REFERENCE = /\/api\/images\/([0-9a-f]{64})\.(?:png|jpg|gif|webp)/g
 
 const DAY = 24 * 60 * 60 * 1000
 export const UNREFERENCED_GRACE_MS = 30 * DAY
 export const TRASH_RETENTION_MS = 30 * DAY
 const STALE_TEMP_MS = DAY
-
-export function isImageType(value: string): value is ImageType {
-  return Object.hasOwn(IMAGE_TYPES, value)
-}
 
 /** The image type the bytes really are, from their signature. */
 export function sniffImageType(bytes: Uint8Array): ImageType | null {
@@ -116,15 +102,10 @@ export function createImageStore({ db, dir, trashDir, now = Date.now }: ImageSto
 
   /** Removes an image row and its owners together. */
   function removeRow(id: string): void {
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    transaction(db, () => {
       sql.remove.run(id)
       sql.removeOwners.run(id)
-      db.exec('COMMIT')
-    } catch (error) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+    })
   }
 
   /**
@@ -154,15 +135,10 @@ export function createImageStore({ db, dir, trashDir, now = Date.now }: ImageSto
     }
     // The row and its owner are written together, so an upload never leaves an image nobody can read.
     const time = now()
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    transaction(db, () => {
       sql.upsert.run(id, ext, bytes.byteLength, time)
       sql.addOwner.run(id, time, userId)
-      db.exec('COMMIT')
-    } catch (error) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+    })
     return { src: `/api/images/${id}.${ext}` }
   }
 
@@ -199,7 +175,7 @@ export function createImageStore({ db, dir, trashDir, now = Date.now }: ImageSto
   function referencedIds(): Set<string> {
     const ids = new Set<string>()
     for (const { content } of sql.noteContents.all() as Array<{ content: string }>) {
-      for (const match of content.matchAll(REFERENCE)) ids.add(match[1] as string)
+      for (const id of imageIdsIn(content)) ids.add(id)
     }
     return ids
   }

@@ -4,8 +4,10 @@ import type { Mark, Node as PMNode } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'
 import type { EditorState } from '@tiptap/pm/state'
 import { DEFAULT_FONT, firstFontFamily } from '../../../shared/fonts.ts'
-import { BLOCK_TYPOGRAPHY, canonicalColor } from '../../../shared/styleProps.ts'
-import type { NamedStyle, StyleBlock, StyleProps } from '../../../shared/styleProps.ts'
+import { BLOCK_TYPOGRAPHY, canonicalColor, FLAG_MARKS } from '../../../shared/styleProps.ts'
+import type { NamedStyle, StyleAlign, StyleBlock, StyleProps } from '../../../shared/styleProps.ts'
+import { styleIndex } from './styleIndex.ts'
+import type { StylesStatus } from './styleIndex.ts'
 
 /**
  * Where a value comes from:
@@ -26,7 +28,7 @@ export type Field<T> = {
   label?: string
 }
 
-export type StylesStatus = 'loading' | 'loaded' | 'failed'
+export type { StylesStatus }
 
 export type StyleRef =
   | { kind: 'none' }
@@ -36,7 +38,7 @@ export type StyleRef =
   | { kind: 'unresolved'; id: string; status: StylesStatus }
 
 export type BlockType = StyleBlock | 'other'
-export type Align = 'left' | 'center' | 'right' | 'justify'
+export type Align = StyleAlign
 
 export type FormatInfo = {
   styles: { text: StyleRef; paragraph: StyleRef }
@@ -78,7 +80,6 @@ const CONTEXT_LABELS: Record<string, string> = {
   details: 'Collapsible section',
 }
 
-const FLAG_MARKS = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strike' } as const
 
 const NODE_LABELS: Record<string, string> = {
   horizontalRule: 'Horizontal line',
@@ -471,17 +472,6 @@ export function inspectFormatting(state: EditorState, styles: StyleState): Forma
       link: text.link.result(),
     },
   }
-}
-
-/** Style id → style, built once per styles snapshot (styleById is a linear search). */
-const indexes = new WeakMap<readonly NamedStyle[], Map<string, NamedStyle>>()
-export function styleIndex(list: readonly NamedStyle[]): Map<string, NamedStyle> {
-  let index = indexes.get(list)
-  if (!index) {
-    index = new Map(list.map(style => [style.id, style]))
-    indexes.set(list, index)
-  }
-  return index
 }
 
 /** One computation per editor state and styles snapshot, shared by every reader. */

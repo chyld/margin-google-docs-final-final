@@ -9,6 +9,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie'
 import { secureHeaders } from 'hono/secure-headers'
 import { z } from 'zod'
 import { inspectDoc } from '../shared/doc.ts'
+import { IMAGE_ID, isImageType, MAX_IMAGE_BYTES } from '../shared/imageRules.ts'
 import { checkSchema } from '../shared/schema.ts'
 import { isValidTag, MAX_TAGS, normalizeTag, normalizeTags } from '../shared/tags.ts'
 import { MAX_TITLE_LENGTH } from '../shared/constants.ts'
@@ -17,7 +18,6 @@ import {
   BusyError,
   createHashQueue,
   createLoginLimiter,
-  createSessionStore,
   hashPassword,
   MAX_PASSWORD_LENGTH,
   normalizeIp,
@@ -29,12 +29,12 @@ import { FontError, MAX_FAVORITES } from './fonts.ts'
 import type { FontKind, FontService } from './fonts.ts'
 import { guard, isImageUpload } from './guard.ts'
 import type { HostRules } from './guard.ts'
-import { isImageType, MAX_IMAGE_BYTES, sniffImageType } from './images.ts'
+import { sniffImageType } from './images.ts'
 import type { ImageStore } from './images.ts'
-import { createNoteStore } from './notes.ts'
 import type { NoteChanges } from './notes.ts'
-import { createStyleStore, StyleError } from './styles.ts'
-import { createUserStore } from './users.ts'
+import { createServices } from './services.ts'
+import type { Services } from './services.ts'
+import { StyleError } from './styles.ts'
 
 export const MAX_BODY_BYTES = 5 * 1024 * 1024
 export const MAX_LOGIN_BODY_BYTES = 4 * 1024
@@ -56,6 +56,8 @@ export type AppOptions = {
   hashQueue?: HashQueue
   /** The client's address; defaults to the socket's remote address. */
   clientIp?: (c: Context) => string
+  /** The data stores; built from `db` when not given (index.ts shares them with its maintenance loop). */
+  services?: Services
 }
 
 type Env = { Variables: { user: SessionUser } }
@@ -65,7 +67,7 @@ const createSchema = z.strictObject({
   title: z.string().max(MAX_TITLE_LENGTH).optional(),
 })
 const touchSchema = z.strictObject({
-  ids: z.array(z.string().regex(/^[0-9a-f]{64}$/)).max(500),
+  ids: z.array(z.string().regex(IMAGE_ID)).max(500),
 })
 const loginSchema = z.strictObject({
   username: z.string().max(200),
@@ -152,10 +154,7 @@ export function createApp(options: AppOptions): Hono {
   const limiter = options.limiter ?? createLoginLimiter()
   const hashQueue = options.hashQueue ?? createHashQueue()
   const clientIp = options.clientIp ?? socketIp
-  const notes = createNoteStore(db)
-  const sessions = createSessionStore(db)
-  const users = createUserStore(db)
-  const styles = createStyleStore(db)
+  const { notes, sessions, users, styles } = options.services ?? createServices(db)
   const app = new Hono()
 
   function writeCookie(c: Context, token: string, expiresAt: number): void {
@@ -320,14 +319,8 @@ export function createApp(options: AppOptions): Hono {
 
   api.get('/auth/me', c => {
     const user = c.get('user')
-    const claim = users.legacyClaim()
     if (!user) return c.json({ error: 'Sign in required', setupNeeded: users.count() === 0 }, 401)
-    const legacy = users.legacyCounts()
-    return c.json({
-      user,
-      legacyPending: legacy.notes + legacy.images > 0,
-      legacyOwner: claim.state === 'done' && claim.userId === user.id,
-    })
+    return c.json({ user })
   })
 
   // ?q= matches title or text; each ?tag= must be on the note (the client takes #tags out of the search).

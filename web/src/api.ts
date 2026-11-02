@@ -1,6 +1,7 @@
 import type { ApiErrorBody, CreateNoteBody, Note, NoteSummary, TagCount, UpdateNoteBody } from '../../shared/types.ts'
 import type { NamedStyle, StyleProps } from '../../shared/styleProps.ts'
 import { MAX_TAGS, parseTagQuery } from '../../shared/tags.ts'
+import { isAuthFailure } from './notes/authFailure.ts'
 
 export class ApiError extends Error {
   status: number
@@ -17,21 +18,14 @@ export class ApiError extends Error {
     this.retryAfter = retryAfter
   }
 
-  /** The session ended (401) or belongs to another account now (409 user_mismatch). Other 409s, like a taken style name, are ordinary errors. */
+  /** The session ended or belongs to another account now (see notes/authFailure.ts). */
   get isAuthFailure(): boolean {
-    return this.status === 401 || (this.status === 409 && this.body?.code === 'user_mismatch')
+    return isAuthFailure(this)
   }
 }
 
-/** For errors that may not be ApiErrors (the save queue gets whatever the request threw). */
-export function isAuthFailure(error: unknown): boolean {
-  const candidate = error as { status?: unknown; body?: { code?: unknown } | null } | null
-  if (!candidate || typeof candidate.status !== 'number') return false
-  return candidate.status === 401 || (candidate.status === 409 && candidate.body?.code === 'user_mismatch')
-}
-
 export type User = { id: string; username: string }
-export type Me = { user: User; legacyPending: boolean; legacyOwner: boolean }
+export type Me = { user: User }
 
 // ---- account binding ----
 // Every signed-in request names the account this page belongs to. If the browser's session is now

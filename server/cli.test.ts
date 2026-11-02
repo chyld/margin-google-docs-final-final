@@ -89,33 +89,11 @@ describe('margin-user', () => {
     expect((await cli(['passwd', 'nobody', '--generate'])).code).toBe(2)
   })
 
-  it('asks before claiming legacy notes, or takes --claim / --no-claim', async () => {
-    const legacy = new DatabaseSync(join(dataDir, 'margin.db'))
-    legacy.exec(`
-      CREATE TABLE notes (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL,
-        text TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      CREATE INDEX notes_updated_at ON notes (updated_at DESC, id DESC);
-      CREATE TABLE images (id TEXT PRIMARY KEY, ext TEXT NOT NULL, bytes INTEGER NOT NULL, created_at INTEGER NOT NULL,
-        unreferenced_since INTEGER, trashed_at INTEGER);
-      CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-      INSERT INTO notes VALUES ('n1', 'Old', '{}', '', 1, 1);
-      PRAGMA user_version = 2;
-    `)
-    legacy.close()
-
-    // No terminal to ask on, and no answer given.
-    const unanswered = await cli(['add', 'chyld', '--generate'])
-    expect(unanswered.code).toBe(1)
-    expect(unanswered.stderr).toContain('--claim')
-    const declined = await cli(['add', 'helper', '--generate', '--no-claim'])
-    expect(declined.code).toBe(0)
-    const list = await cli(['list'])
-    expect(list.stdout).toContain('1 note(s), 0 image(s) from before accounts are unclaimed')
-
-    const added = await cli(['add', 'chyld', '--generate', '--claim'])
-    expect(added.stdout).toContain('chyld now owns 1 note(s), 0 image(s)')
-    expect((await cli(['claim', 'chyld'])).code).toBe(2)
-    expect((await cli(['list'])).stdout).toMatch(/chyld\s+.*\s1\s+0\s+0/)
+  it('has no claim command any more (notes from before accounts are claimed with an older version)', async () => {
+    const claim = await cli(['claim', 'chyld'])
+    expect(claim.code).toBe(1)
+    expect((await cli(['add', 'chyld', '--generate', '--claim'])).code).toBe(1)
+    expect((await cli(['help'])).stdout).not.toContain('claim')
   })
 
   it('changes passwords, renames, signs out, reassigns and deletes', async () => {

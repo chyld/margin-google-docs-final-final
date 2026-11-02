@@ -8,6 +8,7 @@ import {
   canonicalFontFamily,
   canonicalFontSize,
   canonicalProps,
+  FLAG_MARKS,
   hasBlockParts,
   hasInlineParts,
   isUuid,
@@ -19,7 +20,6 @@ type Block = { pos: number; node: PMNode }
 
 const STYLED_BLOCKS = new Set(['paragraph', 'heading'])
 const TEXT_STYLE_KEYS = ['fontFamily', 'fontSize', 'color'] as const
-const FLAG_MARKS = { bold: 'bold', italic: 'italic', underline: 'underline', strike: 'strike' } as const
 
 type Selected = Pick<EditorState, 'selection' | 'doc'>
 

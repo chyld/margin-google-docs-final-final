@@ -44,7 +44,7 @@ docker compose exec margin margin-user --help
 - When Margin is stopped, use `docker compose run --rm margin margin-user …` instead of `exec`.
 - Never run it as root (`docker exec -u root`): the database files must stay owned by the `node` user.
 - Without Docker: `npm run user -- add alice` (uses `DATA_DIR`, default `./data`).
-- **Notes from before accounts** belong to nobody until claimed. The first `add` offers them to the new account (`--claim` / `--no-claim` answers without asking); `margin-user claim <name>` does it later. Until then they're hidden, and the server log and the app say they're waiting.
+- **Data from before accounts** (Margin before Phase 3) must be claimed with an older version first: run the `margin:phase8` image once and `margin-user claim <name>`. This version opens such a database but can't reach those notes, and says so in the server log.
 - Sessions last 30 days after your last visit (at most 180 days). Too many wrong passwords from one device get a 15-minute pause; failures for one name from many devices only slow sign-in down, so nobody can lock you out.
 
 ## Features
@@ -158,7 +158,7 @@ The dev server and Docker both use port 5555, so stop one before starting the ot
 - `server/` is a Hono app on Node 24, run directly as TypeScript (Node strips the types; there's no build step). It uses the built-in `node:sqlite`.
   - Type-only imports must use `import type`, and local imports need `.ts` extensions.
 - `shared/` holds the types and the document validator (`doc.ts`), used by both sides.
-  - `extensions.ts` is the single Tiptap extension list: the editor uses it, and the server checks documents against the schema it produces. When you add an extension, also add its node and mark names to the allowlists in `doc.ts`.
+  - `extensions.ts` is the single Tiptap extension list: the editor uses it, and the server checks documents against the schema it produces. When you add an extension, review its attributes in `doc.ts` and add its node and mark names to the lists there; a test fails until they match the schema.
   - `font-catalog.json` is a snapshot of the Google Fonts catalog. Refresh it with `npm run fonts:catalog`.
 - `server/images.ts` stores and cleans up images; `server/fonts.ts` is the Google Fonts proxy and cache.
 - `web/src/` is a React + Vite app.

@@ -1,7 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ClipboardEvent, FormEvent, KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
-import { isValidTag, MAX_TAG_LENGTH, MAX_TAGS, normalizeTag, splitTagInput, TAG_RULE_MESSAGE } from '../../../shared/tags.ts'
+import {
+  isValidTag,
+  MAX_TAG_LENGTH,
+  MAX_TAGS,
+  normalizeTag,
+  splitTagInput,
+  TAG_RULE_MESSAGE,
+  TAG_TOO_LONG_MESSAGE,
+  TOO_MANY_TAGS_MESSAGE,
+} from '../../../shared/tags.ts'
 
 type TagEditorProps = {
   tags: string[]
@@ -92,13 +101,13 @@ export function TagEditor({ tags, suggestions, disabled, onChange, onOpenTag, on
       if (!tag) continue
       if (!isValidTag(tag)) {
         kept.push(piece)
-        problem ??= tag.length > MAX_TAG_LENGTH ? `Tags are at most ${MAX_TAG_LENGTH} characters` : TAG_RULE_MESSAGE
+        problem ??= tag.length > MAX_TAG_LENGTH ? TAG_TOO_LONG_MESSAGE : TAG_RULE_MESSAGE
         continue
       }
       if (next.includes(tag)) continue
       if (next.length >= MAX_TAGS) {
         kept.push(piece)
-        problem ??= `A note can have at most ${MAX_TAGS} tags`
+        problem ??= TOO_MANY_TAGS_MESSAGE
         continue
       }
       next.push(tag)

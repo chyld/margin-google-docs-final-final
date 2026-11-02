@@ -897,12 +897,6 @@ code {
   flex: 1;
 }
 
-.banner .icon-button {
-  width: 30px;
-  height: 30px;
-  color: inherit;
-}
-
 /* Toolbar: a solid bar that stays put while the page scrolls under it. */
 
 .toolbar {
@@ -2329,7 +2323,7 @@ code {
   text-align: center;
 }
 
-/* Splash, unreachable */
+/* Splash: shown while the app checks who is signed in */
 
 .splash {
   display: grid;

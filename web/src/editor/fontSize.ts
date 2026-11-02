@@ -14,8 +14,7 @@ export const MAX_FONT_SIZE = 400
 const HEADING_SIZES: Record<number, number> = { 1: 20, 2: 16, 3: 14, 4: 12, 5: 11, 6: 11 }
 const PARAGRAPH_SIZE = 11
 
-/** A stored font-size value in points, or null when it isn't expressed in pt or px. */
-// Moved to formatInfo.ts (a leaf module shared with the Format sidebar).
+/** A stored font-size value in points, or null when it isn't expressed in pt or px (defined in formatInfo.ts). */
 export { parseFontSize }
 
 /**

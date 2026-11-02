@@ -243,7 +243,7 @@ describe('styles and accounts', () => {
 
   it('refuses to delete a user who owns only styles, and purges them on request', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
+    const alice = users.create('alice', 'hash')
     addStyle(alice.id, 1, 'Callout')
     expect(users.owned('alice').styles).toBe(1)
     expect(() => users.delete('alice')).toThrow(/style/)
@@ -253,8 +253,8 @@ describe('styles and accounts', () => {
 
   it('moves styles on transfer, keeping ids and renaming clashes', () => {
     const users = createUserStore(db)
-    const alice = users.create('alice', 'hash').user
-    const bob = users.create('bob', 'hash').user
+    const alice = users.create('alice', 'hash')
+    const bob = users.create('bob', 'hash')
     addStyle(bob.id, 1, 'Callout', 1)
     addStyle(bob.id, 2, 'Callout (2)')
     addStyle(alice.id, 3, 'callout', 1)

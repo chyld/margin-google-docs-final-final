@@ -30,8 +30,8 @@ const MIGRATIONS = [
     value  TEXT NOT NULL
   );
   `,
-  // Migration 3: accounts. Notes from before accounts keep user_id NULL (invisible) until claimed; the
-  // legacyClaim setting records whether there is anything to claim. See server/users.ts.
+  // Migration 3: accounts. Notes from before accounts keep user_id NULL (hidden); they were given to
+  // an account with `margin-user claim` (removed after Phase 8). The legacyClaim setting is unread now.
   `
   CREATE TABLE users (
     id                   TEXT PRIMARY KEY,
@@ -168,22 +168,30 @@ function checkVersion(version: number): void {
   }
 }
 
+/** Runs `work` inside BEGIN IMMEDIATE, so checks and writes can't interleave with another process. */
+export function transaction<T>(db: DatabaseSync, work: () => T): T {
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const result = work()
+    db.exec('COMMIT')
+    return result
+  } catch (error) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+}
+
 // The server and the margin-user command can start at the same moment, so the version is read again
 // after taking the write lock: whoever comes second sees the other's work and skips it.
 function migrate(db: DatabaseSync): void {
   checkVersion(readVersion(db))
   if (readVersion(db) === MIGRATIONS.length) return
-  db.exec('BEGIN IMMEDIATE')
-  try {
+  transaction(db, () => {
     const current = readVersion(db)
     checkVersion(current)
     for (let version = current; version < MIGRATIONS.length; version += 1) {
       db.exec(MIGRATIONS[version] as string)
       db.exec(`PRAGMA user_version = ${version + 1}`)
     }
-    db.exec('COMMIT')
-  } catch (error) {
-    db.exec('ROLLBACK')
-    throw error
-  }
+  })
 }

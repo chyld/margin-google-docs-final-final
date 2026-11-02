@@ -1,5 +1,6 @@
 // The editor's extensions, shared so the server validates documents against the exact same schema.
-// When adding one, also update the allowlists in shared/doc.ts.
+// Adding one? Review its attributes in shared/doc.ts and add its node and mark names there (a test
+// fails until you do).
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details'
 import { Highlight } from '@tiptap/extension-highlight'
 import { TaskItem, TaskList } from '@tiptap/extension-list'
@@ -10,8 +11,9 @@ import { Placeholder } from '@tiptap/extensions'
 import { StarterKit } from '@tiptap/starter-kit'
 import { MarginImage } from './image.ts'
 import { NamedStyle, NamedStyleBlock, StyleContinuation } from './namedStyle.ts'
+import { STYLE_ALIGNMENTS } from './styleProps.ts'
 
-export const TEXT_ALIGNMENTS = ['left', 'center', 'right', 'justify'] as const
+export const TEXT_ALIGNMENTS = STYLE_ALIGNMENTS
 export const HEADING_LEVELS = [1, 2, 3, 4, 5, 6] as const
 
 // StarterKit already includes link, underline, lists, undo/redo, drop/gap cursor and trailing node.

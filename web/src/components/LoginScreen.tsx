@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent, ReactNode } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { trapTab } from '../focusTrap.ts'
 import { ApiError } from '../api.ts'
 import { ThemeSwitch } from './ThemeSwitch.tsx'
 
@@ -183,24 +184,6 @@ type SessionDialogProps = {
 }
 
 /** Shown over the app when the session ends mid-use. The editor stays put underneath; nothing is lost. */
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-/** Keeps Tab inside `container` (for modal dialogs). */
-export function trapTab(event: KeyboardEvent<HTMLElement>, container: HTMLElement | null): void {
-  if (event.key !== 'Tab' || !container) return
-  const items = [...container.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(item => item.offsetParent !== null)
-  const first = items[0]
-  const last = items[items.length - 1]
-  if (!first || !last) return
-  if (event.shiftKey && (document.activeElement === first || !container.contains(document.activeElement))) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && (document.activeElement === last || !container.contains(document.activeElement))) {
-    event.preventDefault()
-    first.focus()
-  }
-}
-
 export function SessionDialog({ username, reason, onSubmit, onUseOtherAccount }: SessionDialogProps) {
   const titleId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -212,7 +195,7 @@ export function SessionDialog({ username, reason, onSubmit, onUseOtherAccount }:
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        onKeyDown={event => trapTab(event, dialogRef.current)}
+        onKeyDown={event => trapTab(event, dialogRef.current, { recaptureOutside: true })}
       >
         <h2 id={titleId}>{reason === 'switched' ? 'Another account signed in' : 'Your session ended'}</h2>
         <p>

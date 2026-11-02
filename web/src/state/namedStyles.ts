@@ -5,6 +5,7 @@ import { useSyncExternalStore } from 'react'
 import { stylesheetFor } from '../../../shared/styleProps.ts'
 import type { NamedStyle, StyleProps } from '../../../shared/styleProps.ts'
 import { api, ApiError } from '../api.ts'
+import { styleIndex } from '../editor/styleIndex.ts'
 import { onReauthenticated } from './session.ts'
 
 type Snapshot = { styles: NamedStyle[]; loaded: boolean; failed: boolean }
@@ -42,6 +43,7 @@ function writeStylesheet(styles: NamedStyle[]): void {
 
 /** Loads (or reloads) the list from the server. Failures leave the current list untouched. */
 export function loadStyles(): Promise<void> {
+  ensureListeners()
   if (loading) return loading
   const startedAt = mutations
   const request: Promise<void> = api
@@ -84,7 +86,7 @@ export function useNamedStyles(): Snapshot {
 }
 
 export function styleById(id: string | null | undefined): NamedStyle | undefined {
-  return id ? snapshot.styles.find(style => style.id === id) : undefined
+  return id ? styleIndex(snapshot.styles).get(id) : undefined
 }
 
 /** Live (not deleted) styles: favorites by slot first, then the rest alphabetically. */
@@ -158,8 +160,12 @@ export function styleErrorMessage(error: unknown): string {
   return "Couldn't reach Margin. Try again."
 }
 
-// Another tab may have changed the styles; signing in again may have missed changes.
-if (typeof window !== 'undefined') {
+// Another tab may have changed the styles; signing in again may have missed changes. Installed on
+// the first load (not when this module is imported), once.
+let listening = false
+function ensureListeners(): void {
+  if (listening || typeof window === 'undefined') return
+  listening = true
   window.addEventListener('focus', () => {
     if (snapshot.loaded || snapshot.failed) void loadStyles().catch(() => undefined)
   })

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { FilePlus2, Menu, Plus, X } from 'lucide-react'
+import { FilePlus2, Menu, Plus } from 'lucide-react'
 import { LIST_LIMIT } from '../../shared/constants.ts'
+import { imageIdsIn } from '../../shared/imageRules.ts'
 import { parseTagQuery, toggleTagInQuery } from '../../shared/tags.ts'
 import type { NoteSummary, TagCount } from '../../shared/types.ts'
 import { api, ApiError, setAuthFailureHandler } from './api.ts'
@@ -17,13 +18,11 @@ import { forgetFailedFonts } from './state/fonts.ts'
 import { pendingImageUploads, subscribePendingUploads } from './editor/imageInput.ts'
 import { showNotice } from './state/notices.ts'
 import { navigate, noteIdFromPath, notePath, usePathname } from './router.ts'
-import { createSaveQueue, DRAFT_PREFIX, draftPrefixFor } from './notes/saveQueue.ts'
+import { createSaveQueue, draftPrefixFor } from './notes/saveQueue.ts'
 import { broadcastAuth, notifyReauthenticated, onAuthBroadcast } from './state/session.ts'
 import { useMediaQuery } from './useMediaQuery.ts'
 import { setFormatPanelOpen, useFormatPanel } from './state/formatPanel.ts'
 
-const IMAGE_ID = /\/api\/images\/([0-9a-f]{64})\./g
-const LEGACY_DRAFT = /^margin:draft:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/
 const SIGN_OUT_WAIT_MS = 5000
 const SIDEBAR_KEY = 'margin:sidebar'
 const RAIL_NOTES = 12
@@ -39,35 +38,12 @@ function touchDraftImages(storage: Storage | null, prefix: string) {
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index)
     if (!key?.startsWith(prefix)) continue
-    for (const match of (storage.getItem(key) ?? '').matchAll(IMAGE_ID)) ids.add(match[1] as string)
+    for (const id of imageIdsIn(storage.getItem(key) ?? '')) ids.add(id)
   }
   // The endpoint takes up to 500 ids per request.
   const list = [...ids]
   for (let start = 0; start < list.length; start += 500) {
     void api.touchImages(list.slice(start, start + 500)).catch(() => undefined)
-  }
-}
-
-/**
- * Drafts from before accounts (margin:draft:<noteId>) belong to whoever claimed the old notes. Each
- * old key is removed only after its new copy is written.
- */
-function adoptLegacyDrafts(storage: Storage | null, prefix: string) {
-  if (!storage) return
-  const legacy: string[] = []
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index)
-    if (key && LEGACY_DRAFT.test(key)) legacy.push(key)
-  }
-  for (const key of legacy) {
-    const noteId = (LEGACY_DRAFT.exec(key) as RegExpExecArray)[1] as string
-    try {
-      const value = storage.getItem(key)
-      if (value !== null && storage.getItem(prefix + noteId) === null) storage.setItem(prefix + noteId, value)
-      storage.removeItem(key)
-    } catch {
-      // Storage full: leave the old key for next time.
-    }
   }
 }
 
@@ -113,8 +89,6 @@ export function App({ me }: { me: Me }) {
   const [signingOut, setSigningOut] = useState(false)
   const [locked, setLocked] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const legacyKey = `margin:legacy-hint-dismissed:${user.id}`
-  const [legacyHint, setLegacyHint] = useState(() => me.legacyPending && browserStorage()?.getItem(legacyKey) !== '1')
   const mobile = useMediaQuery('(max-width: 760px)')
   const [collapsed, setCollapsed] = useState(() => browserStorage()?.getItem(SIDEBAR_KEY) === 'collapsed')
   // The rail shows the newest notes even while the search box filters the list.
@@ -149,9 +123,8 @@ export function App({ me }: { me: Me }) {
   )
 
   useEffect(() => {
-    if (me.legacyOwner) adoptLegacyDrafts(browserStorage(), draftPrefix)
     touchDraftImages(browserStorage(), draftPrefix)
-  }, [me.legacyOwner, draftPrefix])
+  }, [draftPrefix])
 
   const loadList = useCallback(async (search: string) => {
     // Only the newest request may update the list; older responses can arrive late.
@@ -674,29 +647,6 @@ export function App({ me }: { me: Me }) {
         />
 
         <div className="main-area" inert={drawerModal}>
-          {legacyHint && (
-            <div className="banner info legacy-banner" role="status">
-              <span>
-                Some notes from before accounts are waiting for an owner. On the computer running Margin, run{' '}
-                <code>margin-user claim &lt;name&gt;</code>.
-              </span>
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Dismiss"
-                onClick={() => {
-                  setLegacyHint(false)
-                  try {
-                    browserStorage()?.setItem(legacyKey, '1')
-                  } catch {
-                    // Not remembered; it shows again next time.
-                  }
-                }}
-              >
-                <X size={16} aria-hidden="true" />
-              </button>
-            </div>
-          )}
           {activeId ? (
             <NoteView
               key={activeId}

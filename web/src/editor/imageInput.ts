@@ -9,13 +9,12 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { EditorState } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { normalizeImageSrc, PAGE_CONTENT_WIDTH } from '../../../shared/image.ts'
+import { IMAGE_TYPES, isImageType, MAX_IMAGE_BYTES } from '../../../shared/imageRules.ts'
 import { api, ApiError, StaleSessionError } from '../api.ts'
 import { showNotice } from '../state/notices.ts'
 import { waitForReauth } from '../state/session.ts'
 
-export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024
-export const IMAGE_ACCEPT = IMAGE_MIME_TYPES.join(',')
+export const IMAGE_ACCEPT = Object.keys(IMAGE_TYPES).join(',')
 
 type PlaceholderMeta = { add?: Array<{ id: string; pos: number; side: number }>; remove?: string[] }
 type FileLike = { name: string; type: string; size: number }
@@ -50,7 +49,7 @@ export function partitionImageFiles<T extends FileLike>(files: T[]): { accepted:
   const accepted: T[] = []
   const rejected: T[] = []
   for (const file of files) {
-    ;(IMAGE_MIME_TYPES.includes(file.type) && file.size > 0 && file.size <= MAX_IMAGE_BYTES ? accepted : rejected).push(file)
+    ;(isImageType(file.type) && file.size > 0 && file.size <= MAX_IMAGE_BYTES ? accepted : rejected).push(file)
   }
   return { accepted, rejected }
 }

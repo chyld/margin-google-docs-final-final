@@ -1,5 +1,6 @@
 import { isIPv6 } from 'node:net'
 import type { MiddlewareHandler } from 'hono'
+import { IMAGE_TYPES } from '../shared/imageRules.ts'
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH'])
@@ -8,7 +9,8 @@ const ALLOWED_FETCH_SITES = new Set(['same-origin', 'none'])
 // The one route that takes a raw (non-JSON) body. Like JSON, these types aren't CORS-safelisted and
 // HTML forms can't send them, so a cross-origin page still can't post here without a preflight.
 const IMAGE_UPLOAD_PATH = '/api/images'
-const IMAGE_UPLOAD_TYPES = /^image\/(?:png|jpeg|gif|webp)\s*(?:;|$)/i
+// The content type may carry parameters (image/png; charset=binary).
+const IMAGE_UPLOAD_TYPES = new RegExp(`^(?:${Object.keys(IMAGE_TYPES).join('|')})\\s*(?:;|$)`, 'i')
 
 export function isImageUpload(method: string, path: string): boolean {
   return method === 'POST' && path === IMAGE_UPLOAD_PATH

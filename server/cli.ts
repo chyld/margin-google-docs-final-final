@@ -14,7 +14,6 @@ import tty from 'node:tty'
 import { cleanUserAgent, hashPassword, normalizeUsername, passwordProblem } from './auth.ts'
 import { openDatabase, prepareDataDir } from './db.ts'
 import { createUserStore, UserError } from './users.ts'
-import type { ClaimCounts } from './users.ts'
 
 const EXIT = { ok: 0, usage: 1, problem: 2, busy: 3 } as const
 
@@ -22,11 +21,9 @@ const HELP = `margin-user: manage Margin accounts
 
 Usage: margin-user <command> [arguments]
 
-  add <name> [--generate | --password-stdin] [--claim | --no-claim]
+  add <name> [--generate | --password-stdin]
                           Create an account. Asks for the password twice (hidden).
                           --generate prints a random password once instead.
-                          The first account can take the notes from before accounts
-                          (it asks; --claim / --no-claim answers without asking).
   list                    Show every account with its notes, images and sessions.
   passwd <name> [--generate | --password-stdin]
                           Set a new password. Signs the user out everywhere.
@@ -36,7 +33,6 @@ Usage: margin-user <command> [arguments]
   delete <name> (--transfer-to <other> | --purge) [--yes]
                           Delete an account. Its notes either move to another user or,
                           with --purge, are deleted for good (asks you to type the name).
-  claim <name>            Give the notes and images from before accounts to <name>.
   reassign <from> <to>    Move every note, image and favorite from one user to another.
 
 Names: 1-32 characters, lowercase letters, digits, dot, dash or underscore.
@@ -197,12 +193,6 @@ async function newPassword(parsed: Parsed): Promise<{ password: string; generate
   return { password, generated: false }
 }
 
-function describeClaim(counts: ClaimCounts): string {
-  const parts = [`${counts.notes} note(s)`, `${counts.images} image(s)`]
-  if (counts.favorites) parts.push('the font favorites')
-  return parts.join(', ')
-}
-
 function when(time: number | null): string {
   if (time === null) return 'never'
   return new Date(time).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
@@ -229,42 +219,16 @@ async function run(argv: string[]): Promise<void> {
   try {
     switch (command) {
       case 'add': {
-        allowFlags(parsed, ['--generate', '--password-stdin', '--claim', '--no-claim'])
-        arity(args, 1, 'add <name> [--generate | --password-stdin] [--claim | --no-claim]')
+        allowFlags(parsed, ['--generate', '--password-stdin'])
+        arity(args, 1, 'add <name> [--generate | --password-stdin]')
         const name = needName(args[0])
         if (users.find(name)) throw new CliError(EXIT.problem, `A user named "${name}" already exists`)
-        let claim = false
-        const legacy = users.legacyCounts()
-        if (parsed.flags.has('--claim') && parsed.flags.has('--no-claim')) {
-          throw new CliError(EXIT.usage, 'Use either --claim or --no-claim')
-        }
-        if (legacy.notes || legacy.images || legacy.favorites) {
-          if (parsed.flags.has('--claim')) claim = true
-          else if (!parsed.flags.has('--no-claim')) {
-            noTerminalHint = `Margin has notes from before accounts. Without a terminal, add --claim (give them to ${name}) or --no-claim.`
-            const answer = await ask(
-              `Margin has ${describeClaim(legacy)} from before accounts. Give them to ${name}? [Y/n] `,
-            )
-            claim = !/^n/i.test(answer.trim())
-          }
-        } else if (parsed.flags.has('--claim') && users.legacyClaim().state !== 'pending') {
-          console.log('(There is nothing from before accounts to claim.)')
-        }
         noTerminalHint = 'No terminal to ask for the password on. Use --password-stdin or --generate.'
         const { password, generated } = await newPassword(parsed)
         // Hash before opening the transaction: scrypt takes a moment and must not hold the lock.
         const hash = await hashPassword(password)
-        let claimed: ClaimCounts | null = null
-        try {
-          claimed = users.create(name, hash, { claim }).claimed
-        } catch (error) {
-          // Another `add` claimed the old notes first: still create this account, without them.
-          if (!(claim && error instanceof UserError && /nothing from before accounts/.test(error.message))) throw error
-          users.create(name, hash, { claim: false })
-          console.log('(Another account claimed the notes from before accounts just now.)')
-        }
+        users.create(name, hash)
         console.log(`Created ${name}.`)
-        if (claimed) console.log(`${name} now owns ${describeClaim(claimed)} from before accounts.`)
         if (generated) console.log(`Password (shown only once): ${password}`)
         if (users.count() === 1) console.log('Sign in at http://<this computer>:5555')
         break
@@ -289,10 +253,6 @@ async function run(argv: string[]): Promise<void> {
             ])
           }
           console.log(table(rows))
-        }
-        const legacy = users.legacyCounts()
-        if (legacy.notes || legacy.images) {
-          console.log(`\n${describeClaim(legacy)} from before accounts are unclaimed: margin-user claim <name>`)
         }
         break
       }
@@ -371,14 +331,6 @@ async function run(argv: string[]): Promise<void> {
           console.log(`Deleted ${name}; ${transferTo} now has their ${result.notes} note(s), ${result.images} image(s) and ${result.styles} style(s).`)
         }
         else console.log(`Deleted ${name}${result.notes + result.images ? ` and ${result.notes} note(s)` : ''}.`)
-        break
-      }
-      case 'claim': {
-        allowFlags(parsed, [])
-        arity(args, 1, 'claim <name>')
-        const name = needName(args[0])
-        const counts = users.claim(name)
-        console.log(`${name} now owns ${describeClaim(counts)} from before accounts.`)
         break
       }
       case 'reassign': {

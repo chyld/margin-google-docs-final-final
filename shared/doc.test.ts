@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { EMPTY_DOC, inspectDoc, isSafeColor, isSafeLink, makeSnippet, MAX_DEPTH, SNIPPET_LENGTH } from './doc.ts'
-import { checkSchema } from './schema.ts'
+import { EMPTY_DOC, inspectDoc, makeSnippet, MARK_TYPES, MAX_DEPTH, NODE_TYPES, SNIPPET_LENGTH } from './doc.ts'
+import { isSafeColor, isSafeLink } from './safe.ts'
+import { checkSchema, schema } from './schema.ts'
 
 const paragraph = (text: string, marks?: unknown[]) => ({
   type: 'paragraph',
@@ -16,6 +17,15 @@ function cleanedMarks(value: unknown) {
   const content = result.doc.content as Array<{ content: Array<{ marks?: unknown[] }> }>
   return content[0]?.content[0]?.marks
 }
+
+describe('allowlists', () => {
+  // The validator lists node and mark types by hand (a review gate for new extensions). They must
+  // stay equal to what the editor can produce.
+  it('cover exactly the editor schema', () => {
+    expect([...NODE_TYPES].sort()).toEqual(Object.keys(schema.nodes).sort())
+    expect([...MARK_TYPES].sort()).toEqual(Object.keys(schema.marks).sort())
+  })
+})
 
 describe('inspectDoc', () => {
   it('accepts the empty document', () => {

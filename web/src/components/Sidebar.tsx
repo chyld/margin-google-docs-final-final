@@ -5,6 +5,7 @@ import type { NoteSummary, TagCount } from '../../../shared/types.ts'
 import { candyFor } from '../state/candy.ts'
 import { displayTitle, firstGrapheme, formatEdited } from '../format.ts'
 import { navigate, notePath } from '../router.ts'
+import { trapTab } from '../focusTrap.ts'
 
 export type ListState = 'loading' | 'ready' | 'error'
 
@@ -98,8 +99,6 @@ export function TagList({
 const ROW_TAGS = 3
 
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
 // Re-render periodically so "5 minutes ago" stays accurate.
 function useNow(intervalMs: number): number {
   const [now, setNow] = useState(() => Date.now())
@@ -141,19 +140,8 @@ export function Sidebar(props: SidebarProps) {
   }, [modal, onClose])
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (!modal || event.key !== 'Tab') return
-    // Keep Tab inside the drawer.
-    const items = [...(ref.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].filter(item => item.offsetParent !== null)
-    const first = items[0]
-    const last = items[items.length - 1]
-    if (!first || !last) return
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
+    // The phone drawer is modal: Tab stays inside it.
+    if (modal) trapTab(event, ref.current)
   }
 
   function handleHome(event: MouseEvent<HTMLAnchorElement>) {

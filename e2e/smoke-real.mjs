@@ -34,7 +34,6 @@ await page.screenshot({ path: `${SHOTS}/real-light.png` })
 await page.emulateMedia({ colorScheme: 'dark' })
 await page.waitForTimeout(300)
 await page.screenshot({ path: `${SHOTS}/real-dark.png` })
-console.log('banner shown:', await page.locator('.legacy-banner').count())
 console.log('non-GET requests:', writes, 'errors:', errors)
 // Sign out just this test session (never `margin-user logout`, which would sign the owner out too).
 await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }))

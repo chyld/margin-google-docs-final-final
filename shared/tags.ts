@@ -4,6 +4,8 @@ export const MAX_TAG_LENGTH = 32
 export const MAX_TAGS = 20
 export const TAG_PATTERN = /^[a-z0-9]{1,32}$/
 export const TAG_RULE_MESSAGE = 'Tags use only a–z and 0–9'
+export const TAG_TOO_LONG_MESSAGE = `Tags are at most ${MAX_TAG_LENGTH} characters`
+export const TOO_MANY_TAGS_MESSAGE = `A note can have at most ${MAX_TAGS} tags`
 
 /** Trims, drops one leading "#", and lowercases. Doesn't validate. */
 export function normalizeTag(raw: string): string {
@@ -23,11 +25,11 @@ export function normalizeTags(list: readonly unknown[]): TagsResult {
     if (typeof raw !== 'string') return { ok: false, error: 'Tags must be strings' }
     const tag = normalizeTag(raw)
     if (!isValidTag(tag)) {
-      return { ok: false, error: tag.length > MAX_TAG_LENGTH ? `Tags are at most ${MAX_TAG_LENGTH} characters` : `${TAG_RULE_MESSAGE}: "${raw.trim()}"` }
+      return { ok: false, error: tag.length > MAX_TAG_LENGTH ? TAG_TOO_LONG_MESSAGE : `${TAG_RULE_MESSAGE}: "${raw.trim()}"` }
     }
     seen.add(tag)
   }
-  if (seen.size > MAX_TAGS) return { ok: false, error: `A note can have at most ${MAX_TAGS} tags` }
+  if (seen.size > MAX_TAGS) return { ok: false, error: TOO_MANY_TAGS_MESSAGE }
   return { ok: true, tags: [...seen].sort() }
 }
 

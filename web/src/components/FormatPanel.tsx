@@ -7,11 +7,14 @@ import { RemoveFormatting, X } from 'lucide-react'
 import { firstFontFamily } from '../../../shared/fonts.ts'
 import type { StyleProps } from '../../../shared/styleProps.ts'
 import { formatInfoFor } from '../editor/formatInfo.ts'
-import type { Field, FormatInfo, StyleRef, StylesStatus } from '../editor/formatInfo.ts'
+import type { Field, FormatInfo, StyleRef } from '../editor/formatInfo.ts'
+import { stylesStatus } from '../editor/styleIndex.ts'
 import type { PanelMode } from '../state/formatPanel.ts'
 import { requestStylesMenu } from '../state/formatPanel.ts'
 import { styleById, useNamedStyles } from '../state/namedStyles.ts'
 import { clearFormatting } from './Toolbar.tsx'
+import { ALIGN_NAMES, blockLabel } from '../editor/labels.ts'
+import { trapTab } from '../focusTrap.ts'
 
 type FormatPanelProps = {
   editor: Editor
@@ -24,17 +27,6 @@ type FormatPanelProps = {
   onClose: (options?: { restoreFocus?: boolean }) => void
 }
 
-const BLOCK_NAMES: Record<string, string> = {
-  paragraph: 'Normal text',
-  h1: 'Heading 1',
-  h2: 'Heading 2',
-  h3: 'Heading 3',
-  h4: 'Heading 4',
-  h5: 'Heading 5',
-  h6: 'Heading 6',
-  other: 'Other',
-}
-const ALIGN_NAMES: Record<string, string> = { left: 'Left', center: 'Center', right: 'Right', justify: 'Justified' }
 
 /** What a style itself sets, for the "Includes" line. */
 function includes(props: StyleProps): string {
@@ -42,7 +34,7 @@ function includes(props: StyleProps): string {
   const family = firstFontFamily(props.fontFamily)
   if (family) parts.push(family)
   if (props.fontSize) parts.push(props.fontSize)
-  if (props.block) parts.push(BLOCK_NAMES[props.block] ?? props.block)
+  if (props.block) parts.push(blockLabel(props.block))
   if (props.align) parts.push(ALIGN_NAMES[props.align] ?? props.align)
   for (const [key, name] of [['bold', 'Bold'], ['italic', 'Italic'], ['underline', 'Underline'], ['strike', 'Strikethrough']] as const) {
     if (props[key]) parts.push(name)
@@ -211,8 +203,6 @@ function TextSection({ info }: { info: FormatInfo }) {
   )
 }
 
-const FOCUSABLE = 'button:not([disabled]), [href], input, [tabindex]:not([tabindex="-1"])'
-
 /**
  * The Format sidebar: the formatting at the cursor or selection, where each part comes from, and the
  * styles involved. Reads the same derivation as the rest of the app (formatInfoFor).
@@ -226,7 +216,7 @@ export function FormatPanel({ editor, mode, off, readOnlyNote, onClose }: Format
   })
   // Saved styles changing (or loading) changes names and looks without an editor transaction.
   const { styles, loaded, failed } = useNamedStyles()
-  const status: StylesStatus = loaded ? 'loaded' : failed ? 'failed' : 'loading'
+  const status = stylesStatus({ loaded, failed })
   const ref = useRef<HTMLElement>(null)
   const sheet = mode === 'sheet'
 
@@ -244,19 +234,8 @@ export function FormatPanel({ editor, mode, off, readOnlyNote, onClose }: Format
       onClose()
       return
     }
-    if (!sheet || event.key !== 'Tab') return
-    // Keep Tab inside the sheet.
-    const items = [...(ref.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
-    const first = items[0]
-    const last = items[items.length - 1]
-    if (!first || !last) return
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first.focus()
-    }
+    // The phone sheet is modal: Tab stays inside it.
+    if (sheet) trapTab(event, ref.current)
   }
 
   function openStyles() {
@@ -320,7 +299,7 @@ export function FormatPanel({ editor, mode, off, readOnlyNote, onClose }: Format
               <h3 id="format-paragraph-title">Paragraph</h3>
               {!info.codeBlock && (
                 <dl>
-                  <Row label="Type" field={info.block} show={value => BLOCK_NAMES[value] ?? value} />
+                  <Row label="Type" field={info.block} show={value => blockLabel(value)} />
                   <Row label="Alignment" field={info.align} show={value => ALIGN_NAMES[value] ?? value} />
                 </dl>
               )}

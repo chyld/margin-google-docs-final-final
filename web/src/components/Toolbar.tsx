@@ -36,12 +36,14 @@ import type { LucideIcon } from 'lucide-react'
 import { HEADING_LEVELS } from '../../../shared/extensions.ts'
 import { firstFontFamily } from '../../../shared/fonts.ts'
 import type { ImageAlign } from '../../../shared/image.ts'
+import type { StyleAlign } from '../../../shared/styleProps.ts'
 import { currentFontSize } from '../editor/fontSize.ts'
 import { IMAGE_ACCEPT, uploadImages } from '../editor/imageInput.ts'
+import { BLOCK_OPTIONS } from '../editor/labels.ts'
 import { FontPicker } from './FontPicker.tsx'
 import { FontSize } from './FontSize.tsx'
 import { LinkPopover } from './LinkPopover.tsx'
-import { clearInlineFormatting, currentStyle, detachBlockStyles, effectiveTextProps } from '../editor/styleCommands.ts'
+import { clearInlineFormatting, currentStyle, effectiveTextProps } from '../editor/styleCommands.ts'
 import type { CurrentStyle } from '../editor/styleCommands.ts'
 import { styleById } from '../state/namedStyles.ts'
 import { StylesMenu } from './StylesMenu.tsx'
@@ -84,7 +86,7 @@ const HIGHLIGHT_COLORS: Swatch[] = [
 ]
 
 type Block = 'paragraph' | `h${(typeof HEADING_LEVELS)[number]}` | 'other'
-type Align = 'left' | 'center' | 'right' | 'justify'
+type Align = StyleAlign
 
 type ToolbarState = {
   editable: boolean
@@ -325,13 +327,11 @@ export function Toolbar({ editor, readOnly, linkOpen, onLinkOpenChange }: Toolba
         disabled={off}
         onChange={event => setBlock(event.target.value)}
       >
-        <option value="paragraph">Normal text</option>
-        <option value="h1">Heading 1</option>
-        <option value="h2">Heading 2</option>
-        <option value="h3">Heading 3</option>
-        <option value="h4">Heading 4</option>
-        <option value="h5">Heading 5</option>
-        <option value="h6">Heading 6</option>
+        {BLOCK_OPTIONS.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
         {state.block === 'other' && (
           <option value="other" disabled>
             —

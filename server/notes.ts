@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { LIST_LIMIT, MAX_QUERY_LENGTH } from '../shared/constants.ts'
 import { EMPTY_DOC, makeSnippet } from '../shared/doc.ts'
-import type { DocJSON, Note, NoteSummary } from '../shared/types.ts'
-import { transaction } from './users.ts'
+import type { DocJSON, Note, NoteSummary, TagCount } from '../shared/types.ts'
+import { transaction } from './db.ts'
 
 type NoteRow = {
   id: string
@@ -28,7 +28,6 @@ export type NoteChanges = {
   tags?: string[]
 }
 
-export type TagCount = { tag: string; count: number }
 
 // Escape LIKE wildcards; pairs with `ESCAPE '\'` in the query.
 function escapeLike(value: string): string {

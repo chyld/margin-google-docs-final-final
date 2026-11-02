@@ -82,34 +82,12 @@ export function detachOnTypeChange(): Plugin {
     key: new PluginKey('namedStyleBlockDetach'),
     appendTransaction(transactions, oldState, newState) {
       if (!transactions.some(tr => tr.docChanged) || transactions.some(tr => tr.getMeta(APPLY_STYLE_META))) return null
-      const back = transactions.map(tr => tr.mapping)
-      const ranges: Array<[number, number]> = []
-      for (const [index, tr] of transactions.entries()) {
-        for (const map of tr.mapping.maps) {
-          map.forEach((_from, _to, newFrom, newTo) => {
-            // Map forward through the rest of this batch's transactions.
-            let from = newFrom
-            let to = newTo
-            for (const later of transactions.slice(index + 1)) {
-              from = later.mapping.map(from, -1)
-              to = later.mapping.map(to, 1)
-            }
-            ranges.push([from, to])
-          })
-        }
-      }
       const tr = newState.tr
-      for (const [from, to] of ranges) {
+      for (const [from, to] of changedRanges(transactions)) {
         newState.doc.nodesBetween(Math.max(0, from), Math.min(newState.doc.content.size, to), (node, pos) => {
           if (!node.isTextblock) return true
           if (!node.attrs.styleId) return false
-          let oldPos = pos
-          for (const mapping of [...back].reverse()) oldPos = mapping.invert().map(oldPos)
-          // The block this one came from: the node at that spot, or (for a block split off by
-          // Enter) the textblock around that spot.
-          const direct = oldState.doc.nodeAt(oldPos)
-          const around = oldState.doc.resolve(Math.min(oldPos, oldState.doc.content.size)).parent
-          const old = direct?.isTextblock ? direct : around.isTextblock ? around : null
+          const old = blockBefore(transactions, oldState, pos)
           if (!old) return false
           const changed = old.type !== node.type || old.attrs.level !== node.attrs.level
           if (changed && tr.doc.nodeAt(pos)?.attrs.styleId) tr.setNodeAttribute(pos, 'styleId', null)

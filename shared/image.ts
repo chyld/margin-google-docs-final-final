@@ -1,9 +1,8 @@
 // Margin's image node: Tiptap's resizable image, locked to images stored by this server.
 import { Image } from '@tiptap/extension-image'
 import type { Node as PMNode } from '@tiptap/pm/model'
+import { IMAGE_SRC } from './imageRules.ts'
 
-/** Images uploaded to Margin are served from here, named by the SHA-256 of their bytes. */
-export const IMAGE_SRC = /^\/api\/images\/[0-9a-f]{64}\.(?:png|jpg|gif|webp)$/
 export const IMAGE_ALIGNMENTS = ['left', 'center', 'right'] as const
 export type ImageAlign = (typeof IMAGE_ALIGNMENTS)[number]
 

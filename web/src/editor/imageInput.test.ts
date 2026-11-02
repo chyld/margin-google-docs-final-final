@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { countForeignImages, MAX_IMAGE_BYTES, partitionImageFiles, shouldPasteAsFiles } from './imageInput.ts'
+import { MAX_IMAGE_BYTES } from '../../../shared/imageRules.ts'
+import { countForeignImages, partitionImageFiles, shouldPasteAsFiles } from './imageInput.ts'
 
 const file = (name: string, type: string, size = 1000) => ({ name, type, size })
 

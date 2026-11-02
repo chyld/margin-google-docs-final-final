@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isSafeFontFamily, isSafeFontSize } from './doc.ts'
+import { isSafeFontFamily, isSafeFontSize } from './safe.ts'
 import catalog from './font-catalog.json' with { type: 'json' }
 import { css2FamilyParam, firstFontFamily, fontFamilyValue, fontSlug } from './fonts.ts'
 import type { FontCatalogEntry } from './fonts.ts'

@@ -2,6 +2,7 @@
 // One queue per app; entries are keyed by note id so remounting the editor never creates a second writer.
 import type { DocJSON, NoteSummary } from '../../../shared/types.ts'
 import { normalizeTags } from '../../../shared/tags.ts'
+import { isAuthFailure } from './authFailure.ts'
 
 export type SavePatch = { title?: string; content?: DocJSON; tags?: string[] }
 
@@ -32,10 +33,8 @@ export type SaveQueueOptions = {
   maxWaitMs?: number
   retryBaseMs?: number
   retryMaxMs?: number
-  /** Where drafts live in storage; one prefix per account. */
-  draftPrefix?: string
-  /** Called when a save fails because the session ended (401) or belongs to someone else (409). */
-  onAuthError?: (error: unknown) => void
+  /** Where this account's drafts live in storage (draftPrefixFor(userId)): one prefix per account. */
+  draftPrefix: string
 }
 
 // Browsers cap keepalive request bodies at 64 KiB in total; stay safely below it.
@@ -77,13 +76,6 @@ export function isRetryable(error: unknown): boolean {
   const status = (error as { status?: unknown } | null)?.status
   if (typeof status !== 'number') return true
   return status >= 500 || status === 408 || status === 429
-}
-
-// Signed out (401), or another account in this browser (409 user_mismatch).
-function isAuthError(error: unknown): boolean {
-  const candidate = error as { status?: unknown; body?: { code?: unknown } | null } | null
-  const status = statusOf(error)
-  return status === 401 || (status === 409 && candidate?.body?.code === 'user_mismatch')
 }
 
 function statusOf(error: unknown): number | undefined {
@@ -132,8 +124,7 @@ export function createSaveQueue(options: SaveQueueOptions) {
     maxWaitMs = 5000,
     retryBaseMs = 1000,
     retryMaxMs = 30_000,
-    draftPrefix = DRAFT_PREFIX,
-    onAuthError,
+    draftPrefix,
   } = options
   // Notes deleted in this session: later edits to them are ignored.
   const deleted = new Set<string>()
@@ -306,13 +297,12 @@ export function createSaveQueue(options: SaveQueueOptions) {
     writeDraft(id, entry)
 
     // Signed out, or another account signed in: keep everything and wait for resume().
-    if (isAuthError(error)) {
+    if (isAuthFailure(error)) {
       paused = true
       entry.retryAttempt = 0
       clearTimers(entry)
       setState(entry, 'paused', PAUSED_MESSAGE)
       settleWaiters(entry, false)
-      onAuthError?.(error)
       return
     }
 
@@ -448,10 +438,6 @@ export function createSaveQueue(options: SaveQueueOptions) {
       let ok = true
       for (const [id, entry] of entries) if (!writeDraft(id, entry)) ok = false
       return ok
-    },
-
-    isPaused(): boolean {
-      return paused
     },
 
     /** Stops sending (e.g. the session ended) without losing anything. */

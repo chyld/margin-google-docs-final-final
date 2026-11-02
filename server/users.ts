@@ -1,7 +1,8 @@
-// Accounts: creating, renaming, deleting, and claiming the notes and images from before accounts.
+// Accounts: creating, renaming, deleting, and moving one account's data to another.
 // Used by the margin-user command (server/cli.ts) and by login.
 import { randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
+import { transaction } from './db.ts'
 import { MAX_STYLE_NAME, styleNameKey } from '../shared/styleProps.ts'
 
 export type UserRow = {
@@ -12,32 +13,12 @@ export type UserRow = {
   password_changed_at: number
 }
 
-export type LegacyClaim =
-  | { state: 'none' }
-  | { state: 'pending'; migratedAt: number }
-  | { state: 'done'; userId: string; at: number }
-
-export type ClaimCounts = { notes: number; images: number; favorites: boolean }
-
 export class UserError extends Error {
   /** 'usage' | 'not-found' | 'conflict' */
   kind: string
   constructor(kind: string, message: string) {
     super(message)
     this.kind = kind
-  }
-}
-
-/** Runs `work` inside BEGIN IMMEDIATE, so checks and writes can't interleave with another process. */
-export function transaction<T>(db: DatabaseSync, work: () => T): T {
-  db.exec('BEGIN IMMEDIATE')
-  try {
-    const result = work()
-    db.exec('COMMIT')
-    return result
-  } catch (error) {
-    db.exec('ROLLBACK')
-    throw error
   }
 }
 
@@ -67,30 +48,13 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     setPassword: db.prepare('UPDATE users SET password_hash = ?, password_changed_at = ? WHERE id = ?'),
     rename: db.prepare('UPDATE users SET username = ? WHERE id = ?'),
     deleteSessions: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
-    getSetting: db.prepare('SELECT value FROM settings WHERE key = ?'),
-    putSetting: db.prepare(
-      'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
-    ),
     countNotes: db.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id = ?'),
     countImages: db.prepare('SELECT COUNT(*) AS n FROM image_owners WHERE user_id = ?'),
-    legacyNotes: db.prepare('SELECT COUNT(*) AS n FROM notes WHERE user_id IS NULL'),
-    legacyImages: db.prepare(
-      `SELECT COUNT(*) AS n FROM images i WHERE i.created_at <= ?
-       AND NOT EXISTS (SELECT 1 FROM image_owners o WHERE o.image_id = i.id)`,
-    ),
-    claimNotes: db.prepare('UPDATE notes SET user_id = ? WHERE user_id IS NULL'),
-    claimImages: db.prepare(
-      `INSERT OR IGNORE INTO image_owners (image_id, user_id, created_at)
-       SELECT i.id, ?, ? FROM images i WHERE i.created_at <= ?
-       AND NOT EXISTS (SELECT 1 FROM image_owners o WHERE o.image_id = i.id)`,
-    ),
-    legacyFavorites: db.prepare("SELECT value FROM settings WHERE key = 'fontFavorites'"),
     getFavorites: db.prepare("SELECT value FROM user_settings WHERE user_id = ? AND key = 'fontFavorites'"),
     putFavorites: db.prepare(
       `INSERT INTO user_settings (user_id, key, value) VALUES (?, 'fontFavorites', ?)
        ON CONFLICT (user_id, key) DO UPDATE SET value = excluded.value`,
     ),
-    countSettings: db.prepare('SELECT COUNT(*) AS n FROM user_settings WHERE user_id = ?'),
     moveNotes: db.prepare('UPDATE notes SET user_id = ? WHERE user_id = ?'),
     moveNoteTags: db.prepare('UPDATE note_tags SET user_id = ? WHERE user_id = ?'),
     copyImageOwners: db.prepare(
@@ -130,26 +94,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     return user
   }
 
-  function legacyClaim(): LegacyClaim {
-    const row = sql.getSetting.get('legacyClaim') as { value: string } | undefined
-    if (!row) return { state: 'none' }
-    try {
-      return JSON.parse(row.value) as LegacyClaim
-    } catch {
-      return { state: 'none' }
-    }
-  }
-
-  function legacyCounts(): ClaimCounts {
-    const claim = legacyClaim()
-    if (claim.state !== 'pending') return { notes: 0, images: 0, favorites: false }
-    return {
-      notes: Number((sql.legacyNotes.get() as { n: number }).n),
-      images: Number((sql.legacyImages.get(claim.migratedAt) as { n: number }).n),
-      favorites: sql.legacyFavorites.get() !== undefined,
-    }
-  }
-
   function parseList(value: string | undefined): string[] {
     if (value === undefined) return []
     try {
@@ -169,20 +113,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
 
   function favoritesOf(userId: string): string[] {
     return parseList((sql.getFavorites.get(userId) as { value: string } | undefined)?.value)
-  }
-
-  // Must run inside a transaction.
-  function claimInto(userId: string): ClaimCounts {
-    const claim = legacyClaim()
-    if (claim.state !== 'pending') throw new UserError('conflict', 'There is nothing from before accounts left to claim')
-    const time = now()
-    const notes = Number(sql.claimNotes.run(userId).changes)
-    const images = Number(sql.claimImages.run(userId, time, claim.migratedAt).changes)
-    // Copied, not moved: the old row stays as a record (nothing reads it any more).
-    const favoritesRow = sql.legacyFavorites.get() as { value: string } | undefined
-    if (favoritesRow) mergeFavorites(userId, parseList(favoritesRow.value))
-    sql.putSetting.run('legacyClaim', JSON.stringify({ state: 'done', userId, at: time }))
-    return { notes, images, favorites: favoritesRow !== undefined }
   }
 
   /**
@@ -215,14 +145,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     return moved
   }
 
-  /** Legacy data moved to another user: so does the right to adopt pre-account drafts. Inside a transaction. */
-  function moveLegacyOwner(fromId: string, toId: string): void {
-    const claim = legacyClaim()
-    if (claim.state === 'done' && claim.userId === fromId) {
-      sql.putSetting.run('legacyClaim', JSON.stringify({ ...claim, userId: toId }))
-    }
-  }
-
   return {
     find,
     require,
@@ -232,23 +154,15 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
     count(): number {
       return Number((sql.count.get() as { n: number }).n)
     },
-    legacyClaim,
-    legacyCounts,
 
-    /** Creates a user. With `claim`, the legacy data goes to them in the same transaction. */
-    create(username: string, passwordHash: string, options: { claim?: boolean } = {}): { user: UserRow; claimed: ClaimCounts | null } {
+    create(username: string, passwordHash: string): UserRow {
       return transaction(db, () => {
         if (find(username)) throw new UserError('conflict', `A user named "${username}" already exists`)
         const time = now()
         const id = randomUUID()
         sql.insert.run(id, username, passwordHash, time, time)
-        const claimed = options.claim && legacyClaim().state === 'pending' ? claimInto(id) : null
-        return { user: sql.byId.get(id) as UserRow, claimed }
+        return sql.byId.get(id) as UserRow
       })
-    },
-
-    claim(username: string): ClaimCounts {
-      return transaction(db, () => claimInto(require(username).id))
     },
 
     /** Moves everything one user owns to another (e.g. the first account got the wrong name). */
@@ -264,7 +178,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
         mergeFavorites(target.id, favoritesOf(source.id))
         sql.moveSettings.run(target.id, source.id)
         sql.deleteSettings.run(source.id)
-        moveLegacyOwner(source.id, target.id)
         const styles = moveStyles(source.id, target.id)
         return { notes, images, styles }
       })
@@ -328,7 +241,6 @@ export function createUserStore(db: DatabaseSync, now: () => number = Date.now) 
           images = Number(sql.copyImageOwners.run(target.id, user.id).changes)
           mergeFavorites(target.id, favoritesOf(user.id))
           sql.moveSettings.run(target.id, user.id)
-          moveLegacyOwner(user.id, target.id)
           movedStyles = moveStyles(user.id, target.id)
         } else if (notes + images + favorites + styles > 0 && !options.purge) {
           throw new UserError(

@@ -1,12 +1,16 @@
 // Validates a stored Tiptap document, strips unsafe attributes and extracts its plain text.
-// The allowlists must match the editor's extensions (shared/extensions.ts). Structure is checked
-// separately against the real editor schema (shared/schema.ts).
+// Structure is checked separately against the real editor schema (shared/schema.ts).
+//
+// The node and mark lists are deliberately written out: a new extension's content is refused until
+// its attributes have been reviewed here. doc.test.ts fails when they differ from the schema.
 import { HEADING_LEVELS as EDITOR_HEADING_LEVELS, TEXT_ALIGNMENTS as EDITOR_TEXT_ALIGNMENTS } from './extensions.ts'
-import { IMAGE_ALIGNMENTS, IMAGE_SRC } from './image.ts'
+import { IMAGE_ALIGNMENTS } from './image.ts'
+import { IMAGE_SRC } from './imageRules.ts'
+import { isSafeColor, isSafeFontFamily, isSafeFontSize, isSafeLink } from './safe.ts'
 import { schema } from './schema.ts'
 import { isUuid } from './styleProps.ts'
 
-const NODE_TYPES = new Set([
+export const NODE_TYPES: ReadonlySet<string> = new Set([
   'doc',
   'paragraph',
   'text',
@@ -30,7 +34,7 @@ const NODE_TYPES = new Set([
   'detailsContent',
 ])
 
-const MARK_TYPES = new Set([
+export const MARK_TYPES: ReadonlySet<string> = new Set([
   'bold',
   'italic',
   'underline',
@@ -73,61 +77,11 @@ export const MAX_DEPTH = 100
 export const MAX_NODES = 200_000
 export const SNIPPET_LENGTH = 140
 
-// Colors end up inside a style attribute. Allow hex, CSS color functions and keywords, but nothing
-// that can end the value early (no ";", quotes, colons or nested parentheses). Pasted HTML brings
-// all of these forms, including oklch() and var() from modern sites.
-const COLOR_FUNCTIONS = 'rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark|var'
-const SAFE_COLOR = new RegExp(`^(?:#[0-9a-f]{3,8}|(?:${COLOR_FUNCTIONS})\\([\\w.%\\s,/+#-]*\\)|[a-z]+)$`, 'i')
-const SAFE_LINK = /^(?:(?:https?|mailto|tel):|\/(?!\/)|#)/i
-
-// Font families also end up in a style attribute. Each list item is a quoted name or bare words;
-// quotes must balance, otherwise a stray quote would swallow the rest of the style declarations.
-const FONT_NAME = String.raw`(?:"[^"'\\;:(){}<>\x00-\x1f\x7f]{1,100}"|'[^"'\\;:(){}<>\x00-\x1f\x7f]{1,100}'|[A-Za-z0-9_-]+(?: [A-Za-z0-9_-]+)*)`
-const SAFE_FONT_FAMILY = new RegExp(`^\\s*${FONT_NAME}(?:\\s*,\\s*${FONT_NAME}){0,19}\\s*$`)
-// Browsers write computed sizes with many decimals (e.g. 14.666666666666666px).
-const FONT_SIZE = /^(\d{1,3}(?:\.\d{1,20})?)(pt|px|em|rem|%)$/
-const FONT_SIZE_KEYWORDS = new Set([
-  'xx-small',
-  'x-small',
-  'small',
-  'medium',
-  'large',
-  'x-large',
-  'xx-large',
-  'xxx-large',
-  'smaller',
-  'larger',
-])
-
 export const EMPTY_DOC = { type: 'doc', content: [{ type: 'paragraph' }] } as const
 
 type Json = Record<string, unknown>
 
 export type InspectResult = { ok: true; text: string; doc: Json } | { ok: false; error: string }
-
-export function isSafeColor(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= 100 && SAFE_COLOR.test(value.trim())
-}
-
-/** Web, email, phone and same-site links. Browsers ignore control characters, so strip them first. */
-export function isSafeLink(value: unknown): value is string {
-  if (typeof value !== 'string') return false
-  return SAFE_LINK.test(value.replace(/[\u0000- \u007f-\u009f]/g, ''))
-}
-
-export function isSafeFontFamily(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= 600 && SAFE_FONT_FAMILY.test(value)
-}
-
-export function isSafeFontSize(value: unknown): value is string {
-  if (typeof value !== 'string') return false
-  const trimmed = value.trim()
-  if (FONT_SIZE_KEYWORDS.has(trimmed)) return true
-  const match = FONT_SIZE.exec(trimmed)
-  if (!match) return false
-  const size = Number(match[1])
-  return size > 0 && size <= 400
-}
 
 // Numbers, or numeric strings as parsed from HTML attributes.
 function toNumber(value: unknown): number | null {
