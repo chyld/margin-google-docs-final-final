@@ -1,4 +1,4 @@
-// What formatting the selection has, and where each part comes from (Phase 8): the Format sidebar's
+// What formatting the selection has, and where each part comes from: the Format sidebar's
 // data. A leaf module (no editor or app imports), so the toolbar's helpers can use it too.
 import type { Mark, Node as PMNode } from '@tiptap/pm/model'
 import { NodeSelection } from '@tiptap/pm/state'

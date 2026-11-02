@@ -321,7 +321,7 @@ code {
   margin-left: auto;
 }
 
-/* The logo is a link home (Phase 7): it looks like the brand, not like a link. */
+/* The logo is a link home: it looks like the brand, not like a link. */
 .brand-link,
 .rail-logo,
 .app-bar-brand {
@@ -1841,7 +1841,7 @@ code {
   justify-content: center;
 }
 
-/* ---- Format sidebar (Phase 8) ---- */
+/* ---- Format sidebar ---- */
 
 /* The canvas and the docked panel side by side under the toolbar. */
 .editor-body {
@@ -2121,7 +2121,7 @@ code {
   width: 100%;
 }
 
-/* ---- Tags (Phase 7) ---- */
+/* ---- Tags ---- */
 
 /* The tag list with counts (sidebar and home): each pill toggles #tag in the search. */
 .tag-list {

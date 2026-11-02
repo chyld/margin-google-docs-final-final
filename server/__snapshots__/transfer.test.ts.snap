@@ -1,0 +1,383 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`moving an account to another > delete --purge removes only the source account and its own rows 1`] = `
+{
+  "result": {
+    "images": 2,
+    "notes": 2,
+    "styles": 3,
+  },
+  "rows": {
+    "image_owners": [
+      {
+        "created_at": 6,
+        "image_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "images": [
+      {
+        "ext": "png",
+        "id": "1111111111111111111111111111111111111111111111111111111111111111",
+      },
+      {
+        "ext": "jpg",
+        "id": "2222222222222222222222222222222222222222222222222222222222222222",
+      },
+    ],
+    "note_tags": [
+      {
+        "note_id": "n-b1",
+        "tag": "ideas",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "notes": [
+      {
+        "id": "n-b1",
+        "title": "Bob tagged",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "sessions": [
+      {
+        "id": "sb",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "styles": [
+      {
+        "deleted_at": null,
+        "favorite_slot": 1,
+        "id": "22222222-0000-4000-8000-000000000001",
+        "name": "CALLOUT",
+        "name_key": "callout",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 2,
+        "id": "55555555-5555-4555-8555-555555555555",
+        "name": "Bob copy",
+        "name_key": "bob copy",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "user_settings": [
+      {
+        "key": "both",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "from bob",
+      },
+      {
+        "key": "fontFavorites",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "["Lato","Roboto"]",
+      },
+    ],
+    "users": [
+      {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "username": "bob",
+      },
+    ],
+  },
+}
+`;
+
+exports[`moving an account to another > delete --transfer-to moves everything, then removes the source account 1`] = `
+{
+  "result": {
+    "images": 1,
+    "notes": 2,
+    "styles": 2,
+  },
+  "rows": {
+    "image_owners": [
+      {
+        "created_at": 6,
+        "image_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "created_at": 7,
+        "image_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "images": [
+      {
+        "ext": "png",
+        "id": "1111111111111111111111111111111111111111111111111111111111111111",
+      },
+      {
+        "ext": "jpg",
+        "id": "2222222222222222222222222222222222222222222222222222222222222222",
+      },
+    ],
+    "note_tags": [
+      {
+        "note_id": "n-a1",
+        "tag": "ideas",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "note_id": "n-a1",
+        "tag": "work",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "note_id": "n-b1",
+        "tag": "ideas",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "notes": [
+      {
+        "id": "n-a1",
+        "title": "Alice tagged",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "id": "n-a2",
+        "title": "Alice plain",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "id": "n-b1",
+        "title": "Bob tagged",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "sessions": [
+      {
+        "id": "sb",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "styles": [
+      {
+        "deleted_at": null,
+        "favorite_slot": 3,
+        "id": "11111111-0000-4000-8000-000000000001",
+        "name": "Callout (2)",
+        "name_key": "callout (2)",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 4,
+        "id": "11111111-0000-4000-8000-000000000002",
+        "name": "Quote",
+        "name_key": "quote",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": 50,
+        "favorite_slot": null,
+        "id": "11111111-0000-4000-8000-000000000003",
+        "name": "Callout",
+        "name_key": "callout",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 1,
+        "id": "22222222-0000-4000-8000-000000000001",
+        "name": "CALLOUT",
+        "name_key": "callout",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 2,
+        "id": "55555555-5555-4555-8555-555555555555",
+        "name": "Bob copy",
+        "name_key": "bob copy",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "user_settings": [
+      {
+        "key": "both",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "from bob",
+      },
+      {
+        "key": "fontFavorites",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "["Lato","Roboto","Lora","Not A Real Font"]",
+      },
+      {
+        "key": "onlyAlice",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "a",
+      },
+    ],
+    "users": [
+      {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "username": "bob",
+      },
+    ],
+  },
+}
+`;
+
+exports[`moving an account to another > reassign moves everything and keeps the source account 1`] = `
+{
+  "result": {
+    "images": 1,
+    "notes": 2,
+    "styles": 2,
+  },
+  "rows": {
+    "image_owners": [
+      {
+        "created_at": 6,
+        "image_id": "1111111111111111111111111111111111111111111111111111111111111111",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "created_at": 7,
+        "image_id": "2222222222222222222222222222222222222222222222222222222222222222",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "images": [
+      {
+        "ext": "png",
+        "id": "1111111111111111111111111111111111111111111111111111111111111111",
+      },
+      {
+        "ext": "jpg",
+        "id": "2222222222222222222222222222222222222222222222222222222222222222",
+      },
+    ],
+    "note_tags": [
+      {
+        "note_id": "n-a1",
+        "tag": "ideas",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "note_id": "n-a1",
+        "tag": "work",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "note_id": "n-b1",
+        "tag": "ideas",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "notes": [
+      {
+        "id": "n-a1",
+        "title": "Alice tagged",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "id": "n-a2",
+        "title": "Alice plain",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "id": "n-b1",
+        "title": "Bob tagged",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "sessions": [
+      {
+        "id": "sa",
+        "user_id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      },
+      {
+        "id": "sb",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "styles": [
+      {
+        "deleted_at": null,
+        "favorite_slot": 3,
+        "id": "11111111-0000-4000-8000-000000000001",
+        "name": "Callout (2)",
+        "name_key": "callout (2)",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 4,
+        "id": "11111111-0000-4000-8000-000000000002",
+        "name": "Quote",
+        "name_key": "quote",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": 50,
+        "favorite_slot": null,
+        "id": "11111111-0000-4000-8000-000000000003",
+        "name": "Callout",
+        "name_key": "callout",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 1,
+        "id": "22222222-0000-4000-8000-000000000001",
+        "name": "CALLOUT",
+        "name_key": "callout",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+      {
+        "deleted_at": null,
+        "favorite_slot": 2,
+        "id": "55555555-5555-4555-8555-555555555555",
+        "name": "Bob copy",
+        "name_key": "bob copy",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      },
+    ],
+    "user_settings": [
+      {
+        "key": "both",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "from bob",
+      },
+      {
+        "key": "fontFavorites",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "["Lato","Roboto","Lora","Not A Real Font"]",
+      },
+      {
+        "key": "onlyAlice",
+        "user_id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "value": "a",
+      },
+    ],
+    "users": [
+      {
+        "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "username": "alice",
+      },
+      {
+        "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        "username": "bob",
+      },
+    ],
+  },
+}
+`;
+
+exports[`moving an account to another > reports what an account owns (the refusal message uses these) 1`] = `
+{
+  "favorites": 4,
+  "images": 2,
+  "notes": 2,
+  "styles": 3,
+}
+`;
+
+exports[`moving an account to another > reports what an account owns (the refusal message uses these) 2`] = `[Error: "alice" owns 2 note(s), 2 image(s), 3 style(s) and 4 favorite font(s). Use --transfer-to <user> or --purge]`;

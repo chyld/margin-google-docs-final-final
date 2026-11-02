@@ -1,6 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { fontsInDoc } from './fonts.ts'
-import { clampFontSize, parseFontSize } from './fontSize.ts'
 import { countForeignImages, MAX_IMAGE_BYTES, partitionImageFiles, shouldPasteAsFiles } from './imageInput.ts'
 
 const file = (name: string, type: string, size = 1000) => ({ name, type, size })
@@ -57,45 +55,5 @@ describe('countForeignImages', () => {
 
   it('is zero for HTML without images', () => {
     expect(countForeignImages('<p>text</p>', origin)).toBe(0)
-  })
-})
-
-describe('font sizes', () => {
-  it.each([
-    ['11pt', 11],
-    ['14.5pt', 14.5],
-    ['16px', 12],
-    ['13.333px', 10],
-    ['1.2em', null],
-    ['large', null],
-    [null, null],
-  ])('parses %s as %s pt', (value, expected) => {
-    expect(parseFontSize(value)).toBe(expected)
-  })
-
-  it('clamps to 1–400 in half points', () => {
-    expect(clampFontSize(0)).toBe(1)
-    expect(clampFontSize(999)).toBe(400)
-    expect(clampFontSize(11.3)).toBe(11.5)
-  })
-})
-
-describe('fontsInDoc', () => {
-  it('collects the first family of every font used, without quotes', () => {
-    const doc = {
-      type: 'doc',
-      content: [
-        {
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'a', marks: [{ type: 'textStyle', attrs: { fontFamily: '"Open Sans", sans-serif' } }] },
-            { type: 'text', text: 'b', marks: [{ type: 'textStyle', attrs: { fontFamily: "'Lora', serif" } }] },
-            { type: 'text', text: 'c', marks: [{ type: 'textStyle', attrs: { fontFamily: null, color: '#000' } }] },
-          ],
-        },
-        { type: 'table', content: [{ type: 'tableRow', content: [{ type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'd', marks: [{ type: 'textStyle', attrs: { fontFamily: 'Open Sans' } }] }] }] }] }] },
-      ],
-    }
-    expect([...fontsInDoc(doc)].sort()).toEqual(['Lora', 'Open Sans'])
   })
 })

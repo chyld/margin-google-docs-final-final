@@ -5,3 +5,4 @@ data
 *.log
 **/*.test.ts
 PLAN.md
+e2e

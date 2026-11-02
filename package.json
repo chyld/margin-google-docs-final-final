@@ -17,7 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fonts:catalog": "node scripts/update-font-catalog.ts",
-    "user": "node server/cli.ts"
+    "user": "node server/cli.ts",
+    "e2e": "e2e/run.sh all"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",
@@ -45,6 +46,7 @@
     "concurrently": "^10.0.6",
     "happy-dom": "^21.0.4",
     "lucide-react": "^1.65.0",
+    "playwright-core": "1.64.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "^7.0.2",

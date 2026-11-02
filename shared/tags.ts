@@ -1,4 +1,4 @@
-// Note tags (Phase 7): lowercase a–z and 0–9 only, shared by the client and the server.
+// Note tags: lowercase a–z and 0–9 only, shared by the client and the server.
 
 export const MAX_TAG_LENGTH = 32
 export const MAX_TAGS = 20

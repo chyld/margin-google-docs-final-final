@@ -88,7 +88,7 @@ function prepareNote(queue: SaveQueue, note: Note): Prepared {
   }
 }
 
-/** Shows or hides the Format sidebar (Phase 8). */
+/** Shows or hides the Format sidebar. */
 function FormatToggle() {
   const { open } = useFormatPanel()
   const mac = typeof navigator !== 'undefined' && navigator.platform.startsWith('Mac')

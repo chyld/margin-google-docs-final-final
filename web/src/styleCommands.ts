@@ -333,7 +333,7 @@ export function captureProps(state: EditorState, styleOf: (id: string) => StyleP
   return canonicalProps(props as StyleProps)
 }
 
-// ---- Ending a style (Phase 5) ----
+// ---- Ending a style ----
 // Any formatting-bar change ends the style from that point on, and the text keeps its look: the
 // style's parts become direct formatting, then the tag (and, where it applies, the paragraph link)
 // is removed.

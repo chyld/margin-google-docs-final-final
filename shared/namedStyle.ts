@@ -121,7 +121,7 @@ export function detachOnTypeChange(): Plugin {
   })
 }
 
-// ---- Styles keep going (Phase 5) ----
+// ---- Styles keep going ----
 
 const STYLED_TYPES = new Set(['paragraph', 'heading'])
 const LIST_ITEMS = new Set(['listItem', 'taskItem'])

@@ -1,4 +1,4 @@
-// Formatting-bar actions end the active style first (Phase 5): one transaction, one undo step.
+// Formatting-bar actions end the active style first: one transaction, one undo step.
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import type { ChainedCommands, Editor } from '@tiptap/core'

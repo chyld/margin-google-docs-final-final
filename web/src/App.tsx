@@ -481,7 +481,7 @@ export function App({ me }: { me: Me }) {
     if (justCreatedId && activeId !== justCreatedId) setJustCreatedId(null)
   }, [activeId, justCreatedId])
 
-  // "/" is home: no note opens by itself (Phase 7), so the logo, a refresh and Back all agree.
+  // "/" is home: no note opens by itself, so the logo, a refresh and Back all agree.
 
   // Opening a note closes the phone drawer; NoteView then takes keyboard focus (focusOnOpen).
   const openedFromDrawer = useRef(false)

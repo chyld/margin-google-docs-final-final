@@ -1,4 +1,4 @@
-// The Format sidebar's open state (Phase 8). Docked on wide windows (the choice is remembered per
+// The Format sidebar's open state. Docked on wide windows (the choice is remembered per
 // device); an overlay on medium windows and a bottom sheet on phones, both opened only on request
 // and reset whenever the window crosses into another mode.
 import { useSyncExternalStore } from 'react'

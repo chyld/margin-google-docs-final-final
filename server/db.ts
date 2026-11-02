@@ -15,7 +15,7 @@ const MIGRATIONS = [
   );
   CREATE INDEX notes_updated_at ON notes (updated_at DESC, id DESC);
   `,
-  // Phase 2: uploaded images (files live in DATA_DIR/images) and app settings such as font favorites.
+  // Migration 2: uploaded images (files live in DATA_DIR/images) and app settings such as font favorites.
   `
   CREATE TABLE images (
     id                  TEXT PRIMARY KEY,
@@ -30,7 +30,7 @@ const MIGRATIONS = [
     value  TEXT NOT NULL
   );
   `,
-  // Phase 3: accounts. Notes from before accounts keep user_id NULL (invisible) until claimed; the
+  // Migration 3: accounts. Notes from before accounts keep user_id NULL (invisible) until claimed; the
   // legacyClaim setting records whether there is anything to claim. See server/users.ts.
   `
   CREATE TABLE users (
@@ -73,7 +73,7 @@ const MIGRATIONS = [
       ELSE json_object('state', 'none')
     END;
   `,
-  // Phase 4: saved styles. Deleted styles stay (deleted_at) so text that uses them keeps its look.
+  // Migration 4: saved styles. Deleted styles stay (deleted_at) so text that uses them keeps its look.
   `
   CREATE TABLE styles (
     id             TEXT NOT NULL,
@@ -89,7 +89,7 @@ const MIGRATIONS = [
   );
   CREATE UNIQUE INDEX styles_live_name ON styles (user_id, name_key) WHERE deleted_at IS NULL;
   `,
-  // Phase 7: note tags (shared/tags.ts rules). user_id is always the note owner's, kept in step by
+  // Migration 5: note tags (shared/tags.ts rules). user_id is always the note owner's, kept in step by
   // notes.ts and users.ts (the schema declares no foreign keys).
   `
   CREATE TABLE note_tags (

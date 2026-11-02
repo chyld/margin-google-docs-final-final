@@ -644,6 +644,16 @@ describe('migration 3 and claiming', () => {
     return path
   }
 
+  it('still upgrades a database from before accounts, keeping its notes unowned (hidden)', () => {
+    const upgraded = openDatabase(legacyDatabase())
+    expect(upgraded.prepare('PRAGMA user_version').get()).toEqual({ user_version: SCHEMA_VERSION })
+    expect(upgraded.prepare('SELECT id, user_id FROM notes ORDER BY id').all()).toEqual([
+      { id: 'n1', user_id: null },
+      { id: 'n2', user_id: null },
+    ])
+    expect(upgraded.prepare('SELECT COUNT(*) AS n FROM image_owners').get()).toEqual({ n: 0 })
+  })
+
   it('hides legacy notes until the first account claims them, once', () => {
     const upgraded = openDatabase(legacyDatabase())
     expect(upgraded.prepare('PRAGMA user_version').get()).toEqual({ user_version: SCHEMA_VERSION })
