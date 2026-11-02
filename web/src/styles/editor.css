@@ -1,0 +1,491 @@
+/* The warm canvas scrolls; the white page sits on it like a sheet of paper on a desk. The page is
+   light in both themes: its own colors are pinned here so dark-theme tokens never reach note content.
+   --page-accent is for editing UI on the page (selection, handles), never for content. */
+
+.canvas {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 16px 48px;
+  background: var(--canvas);
+  scrollbar-color: var(--control-border) transparent;
+  cursor: text;
+}
+
+.page {
+  --page-accent: #815000;
+  --page-accent-soft: rgb(129 80 0 / 14%);
+
+  /* Full width: the page fills the space beside the sidebar, and at least the visible height. */
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  padding: 40px 56px;
+  border: 1px solid #857f71;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  box-shadow: var(--page-shadow);
+  color: #202124;
+  color-scheme: light;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 32px 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .canvas {
+    padding: 10px 10px max(48px, env(safe-area-inset-bottom));
+  }
+
+  .page {
+    min-height: calc(100% - 4px);
+    padding: 28px 20px 48px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Bigger invisible grab area for image resize handles on touch screens. */
+  .document [data-resize-handle]::after {
+    position: absolute;
+    inset: -14px;
+    content: '';
+  }
+}
+
+/* Document typography */
+
+.document {
+  min-height: 200px;
+  outline: none;
+  color: #202124;
+  /* The page's default font (shared/fonts.ts DEFAULT_FONT), bundled with the app. */
+  font-family: 'IBM Plex Sans', Arial, Helvetica, sans-serif;
+  /* Sizes are in points so the toolbar's size box reads true (Google Docs uses 11pt). */
+  font-size: 11pt;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+  caret-color: #202124;
+}
+
+.document > * + * {
+  margin-top: 0.6em;
+}
+
+.document p {
+  margin: 0;
+}
+
+.document h1,
+.document h2,
+.document h3,
+.document h4,
+.document h5,
+.document h6 {
+  margin: 1.2em 0 0.4em;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.document h1 {
+  font-size: 20pt;
+}
+
+.document h2 {
+  font-size: 16pt;
+}
+
+.document h3 {
+  color: #434343;
+  font-size: 14pt;
+}
+
+.document h4 {
+  color: #666;
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.document h5 {
+  color: #666;
+  font-size: 11pt;
+  font-weight: 700;
+}
+
+.document h6 {
+  color: #666;
+  font-size: 11pt;
+  font-style: italic;
+}
+
+.document > :first-child {
+  margin-top: 0;
+}
+
+.document ul,
+.document ol {
+  margin: 0.4em 0;
+  padding-left: 1.6em;
+}
+
+.document li > p {
+  margin: 0.15em 0;
+}
+
+.document blockquote {
+  margin: 0.8em 0;
+  padding-left: 1em;
+  border-left: 3px solid #dadce0;
+  color: #5f6368;
+}
+
+.document code {
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  background: #f1f3f4;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.document pre {
+  margin: 0.8em 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: #f1f3f4;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.document pre code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.document hr {
+  margin: 1.2em 0;
+  border: 0;
+  border-top: 1px solid #dadce0;
+}
+
+.document hr.ProseMirror-selectednode {
+  border-top-color: var(--page-accent);
+}
+
+.document a {
+  color: #1a73e8;
+  text-decoration: underline;
+  cursor: text;
+}
+
+.document mark {
+  padding: 0.05em 0;
+  border-radius: 2px;
+  background-color: #fff475;
+  color: inherit;
+}
+
+/* Checklists */
+
+.document ul[data-type='taskList'] {
+  padding-left: 0.2em;
+  list-style: none;
+}
+
+.document ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.document ul[data-type='taskList'] li > label {
+  flex: none;
+  margin-top: 0.3em;
+  user-select: none;
+}
+
+.document ul[data-type='taskList'] li > label input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--page-accent);
+  cursor: pointer;
+}
+
+.document ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.document ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: #5f6368;
+  text-decoration: line-through;
+}
+
+/* Placeholder (Tiptap only sets the attribute; the text comes from this rule) */
+
+.document p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: #5f6368;
+  pointer-events: none;
+}
+
+/* Tables */
+
+.document .tableWrapper {
+  margin: 0.8em 0;
+  overflow-x: auto;
+}
+
+.document table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.document td,
+.document th {
+  position: relative;
+  min-width: 48px;
+  padding: 6px 8px;
+  border: 1px solid #c4c7c5;
+  vertical-align: top;
+}
+
+.document th {
+  background: #f1f3f4;
+  font-weight: 700;
+  text-align: left;
+}
+
+.document td > * + *,
+.document th > * + * {
+  margin-top: 0.4em;
+}
+
+.document .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: var(--page-accent-soft);
+  content: '';
+  pointer-events: none;
+}
+
+.document .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -1px;
+  z-index: 3;
+  width: 4px;
+  background: var(--page-accent);
+  pointer-events: none;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Images. Tiptap's resizable view wraps each image: container (flex) > wrapper > img + handles. */
+
+.document [data-resize-container][data-node='image'] {
+  max-width: 100%;
+  margin: 0.6em 0;
+}
+
+.document [data-resize-container][data-node='image']:has(img[data-align='center']) {
+  justify-content: center;
+}
+
+.document [data-resize-container][data-node='image']:has(img[data-align='right']) {
+  justify-content: flex-end;
+}
+
+.document [data-resize-wrapper] {
+  max-width: 100%;
+  min-width: 0;
+  line-height: 0;
+}
+
+.document img {
+  display: block;
+  max-width: 100%;
+}
+
+/* Keeps the ratio when max-width shrinks an image; not while dragging, so the drag is exact. */
+.document [data-resize-container]:not([data-resize-state='true']) img {
+  height: auto !important;
+}
+
+.document .ProseMirror-selectednode img,
+.document [data-resize-state='true'] img {
+  outline: 2px solid var(--page-accent);
+  outline-offset: 1px;
+}
+
+/* Tiptap ships the handles unstyled (0×0); give them a size and show them on hover or selection. */
+.document [data-resize-handle] {
+  z-index: 2;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--page-accent);
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.document [data-resize-handle='top-left'] {
+  cursor: nwse-resize;
+  transform: translate(-50%, -50%);
+}
+
+.document [data-resize-handle='bottom-right'] {
+  cursor: nwse-resize;
+  transform: translate(50%, 50%);
+}
+
+.document [data-resize-handle='top-right'] {
+  cursor: nesw-resize;
+  transform: translate(50%, -50%);
+}
+
+.document [data-resize-handle='bottom-left'] {
+  cursor: nesw-resize;
+  transform: translate(-50%, 50%);
+}
+
+.document [data-resize-container]:hover [data-resize-handle],
+.document .ProseMirror-selectednode [data-resize-handle],
+.document [data-resize-state='true'] [data-resize-handle] {
+  opacity: 1;
+}
+
+/* The view only re-checks editability on update events, which read-only notes never emit. */
+.document[contenteditable='false'] [data-resize-handle] {
+  display: none;
+}
+
+.image-upload-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 220px;
+  height: 120px;
+  margin: 4px 0;
+  border: 1px dashed #80868b;
+  border-radius: 6px;
+  background: #f8f9fa;
+  color: #5f6368;
+  font-size: 13px;
+  vertical-align: middle;
+  animation: upload-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes upload-pulse {
+  50% {
+    background: #eef1f4;
+  }
+}
+
+/* Collapsible sections: div.details > button + div > summary + div[data-type=detailsContent].
+   The content is hidden with the hidden attribute, so never set display on it. */
+
+.document .details {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  margin: 0.6em 0;
+}
+
+.document .details > button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  margin: 0.05em 0 0 -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.document .details > button::before {
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #5f6368;
+  content: '';
+  /* No transition: sections saved open get their class just after mount, and the browser could
+     leave the rotation unfinished (the triangle kept pointing right on an open section). */
+}
+
+.document .details.is-open > button::before {
+  transform: rotate(90deg);
+}
+
+.document .details > button:hover {
+  background: #f4efe5;
+}
+
+.document .details > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.document .details summary {
+  font-weight: 700;
+  list-style: none;
+}
+
+.document .details summary::-webkit-details-marker {
+  display: none;
+}
+
+.document [data-type='detailsContent'] {
+  margin-top: 0.3em;
+}
+
+.document [data-type='detailsContent'] > * + * {
+  margin-top: 0.6em;
+}
+
+.document summary.is-empty::before {
+  float: left;
+  height: 0;
+  color: #5f6368;
+  font-weight: 400;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+/* Selection and cursors */
+
+/* The page is white in both themes, so keyboard focus on it uses the page accent (the dark theme's
+   pale focus color would vanish on white). */
+.page :focus-visible {
+  outline-color: var(--page-accent);
+}
+
+.document ::selection {
+  background: #eadcc0;
+  /* Selected links too: the blue would drop below 4.5:1 on the tint. */
+  color: #202124;
+}
+
+.ProseMirror-gapcursor::after {
+  border-top-color: #202124;
+}
+
+.document[contenteditable='false'] {
+  cursor: default;
+}

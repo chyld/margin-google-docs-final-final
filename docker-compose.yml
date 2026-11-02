@@ -1,0 +1,35 @@
+name: margin
+
+services:
+  margin:
+    build: .
+    image: margin:latest
+    container_name: margin
+    init: true
+    ports:
+      # Reachable from other devices on your network (sign-in required). Docker publishes this port
+      # around host firewalls such as ufw. On a network you don't trust, set MARGIN_BIND=127.0.0.1.
+      - "${MARGIN_BIND:-0.0.0.0}:${MARGIN_PUBLIC_PORT:-5555}:5555"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "5555"
+      # The port in the browser's address bar. Change it with the left side of "ports" above.
+      PUBLIC_PORT: "${MARGIN_PUBLIC_PORT:-5555}"
+      DATA_DIR: /data
+      FONT_DOWNLOADS: "${FONT_DOWNLOADS:-on}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-off}"
+      # Extra host names for the address bar, e.g. "mybox.local". localhost and IP addresses always work.
+      ALLOWED_HOSTS: "${MARGIN_HOSTS:-}"
+    volumes:
+      - margin-data:/data
+    restart: unless-stopped
+    stop_grace_period: 10s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5555/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  margin-data:
